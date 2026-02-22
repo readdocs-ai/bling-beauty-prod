@@ -1,0 +1,20 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/checkout/route": "app/api/checkout/route.js",
+  "/admin/login/page": "app/admin/login/page.js",
+  "/about/page": "app/about/page.js",
+  "/admin/new/page": "app/admin/new/page.js",
+  "/contact/page": "app/contact/page.js",
+  "/cart/page": "app/cart/page.js",
+  "/api/stripe/webhook/route": "app/api/stripe/webhook/route.js",
+  "/page": "app/page.js",
+  "/privacy/page": "app/privacy/page.js",
+  "/policies/page": "app/policies/page.js",
+  "/product/[slug]/page": "app/product/[slug]/page.js",
+  "/admin/edit/[id]/page": "app/admin/edit/[id]/page.js",
+  "/shop/page": "app/shop/page.js",
+  "/terms/page": "app/terms/page.js",
+  "/success/page": "app/success/page.js",
+  "/returns/page": "app/returns/page.js",
+  "/admin/page": "app/admin/page.js"
+}

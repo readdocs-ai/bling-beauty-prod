@@ -1,0 +1,22 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bling Beauty mark">
+  <defs>
+    <linearGradient id="g" x1="64" y1="48" x2="192" y2="208" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B0B0C"/>
+      <stop offset="1" stop-color="#1A1A1D"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Soft rounded tile -->
+  <rect x="24" y="24" width="208" height="208" rx="56" fill="url(#g)"/>
+
+  <!-- Minimal "B" monogram -->
+  <path d="M92 80C92 74.477 96.477 70 102 70H142C162.987 70 178 83.982 178 102C178 114.2 171.3 123.6 161.2 128C172.9 132.2 181 142.3 181 156C181 175.4 166.8 190 145.5 190H102C96.477 190 92 185.523 92 180V80Z"
+        fill="white" fill-opacity="0.92"/>
+  <path d="M112 90H141C152.6 90 158 96.7 158 105C158 113.3 152.6 120 141 120H112V90Z"
+        fill="#0B0B0C" fill-opacity="0.88"/>
+  <path d="M112 136H144C156.5 136 161 143.5 161 153C161 162.5 156.5 170 144 170H112V136Z"
+        fill="#0B0B0C" fill-opacity="0.88"/>
+
+  <!-- Tiny sparkle -->
+  <path d="M198 86L203 96L213 101L203 106L198 116L193 106L183 101L193 96L198 86Z" fill="#F6E7C7" fill-opacity="0.95"/>
+</svg>

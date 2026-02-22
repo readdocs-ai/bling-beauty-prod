@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional: nice default background + text */
+html, body {
+  height: 100%;
+}
+
+body {
+  @apply bg-ivory text-soft-black;
+}

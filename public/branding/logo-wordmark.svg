@@ -1,0 +1,19 @@
+<svg width="840" height="180" viewBox="0 0 840 180" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bling Beauty Products">
+  <defs>
+    <linearGradient id="gold" x1="540" y1="40" x2="680" y2="140" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6E7C7"/>
+      <stop offset="1" stop-color="#D9C08A"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Wordmark -->
+  <text x="40" y="104" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial" font-size="64" font-weight="600" fill="#0B0B0C" letter-spacing="-1">
+    Bling Beauty
+  </text>
+  <text x="44" y="142" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial" font-size="22" font-weight="500" fill="#0B0B0C" opacity="0.62" letter-spacing="3">
+    PRODUCTS
+  </text>
+
+  <!-- Minimal accent line -->
+  <rect x="540" y="128" width="220" height="3" rx="1.5" fill="url(#gold)" opacity="0.9"/>
+</svg>

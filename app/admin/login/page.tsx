@@ -9,14 +9,14 @@ async function loginAction(formData: FormData) {
   const p = String(formData.get("password") ?? "");
 
   if (u === process.env.ADMIN_USERNAME && p === process.env.ADMIN_PASSWORD) {
-    setAdminCookie();
+    await setAdminCookie();
     redirect("/admin");
   }
 
   redirect("/admin/login?error=1");
 }
 
-export default function AdminLogin({ searchParams }: { searchParams: { error?: string } }) {
+export default async function AdminLogin({ searchParams }: { searchParams: { error?: string } }) {
   const error = searchParams?.error === "1";
 
   return (

@@ -15,7 +15,7 @@ const variants: Record<Variant, string> = {
   default:
     "bg-soft-black text-white shadow-soft hover:opacity-95 active:opacity-90",
   ghost:
-    "bg-transparent text-soft-black hover:bg-soft-black/5 shadow-none active:opacity-90",
+    "bg-transparent text-current hover:bg-current/5 shadow-none active:opacity-90",
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(

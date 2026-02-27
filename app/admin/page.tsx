@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 async function logoutAction() {
   "use server";
-  clearAdminCookie();
+  await clearAdminCookie();
   redirect("/");
 }
 

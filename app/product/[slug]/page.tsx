@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import { getProductBySlug } from "@/lib/products";
 import { ProductDetail } from "@/components/product/product-detail";
 
-function slugify(input: string) {
-  return input
+function slugify(input?: string | null) {
+  const value = (input ?? "").toString();
+  return value
     .trim()
     .toLowerCase()
     .replace(/&/g, "and")
@@ -12,8 +13,10 @@ function slugify(input: string) {
     .replace(/-+/g, "-");
 }
 
-export default async function ProductPage({ params }: { params: { slug: string } }) {
-  const raw = params.slug; // Next gives this decoded, e.g. "Velvet Matte Lip Collection"
+export default async function ProductPage({ params }: { params: { slug?: string } }) {
+  const raw = params?.slug ?? "";
+  if (!raw) return notFound();
+
   const normalized = slugify(raw);
 
   const product = (await getProductBySlug(raw)) || (await getProductBySlug(normalized));

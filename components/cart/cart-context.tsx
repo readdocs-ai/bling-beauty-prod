@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useReducer } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useReducer, useState } from "react";
 import type { CartItem } from "./cart-types";
 
 type CartState = { items: CartItem[] };
@@ -45,26 +45,31 @@ const STORAGE_KEY = "blingbeauty_cart_v2";
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, { items: [] });
+  const [cartLoaded, setCartLoaded] = useState(false);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as CartState;
-        if (parsed?.items?.length) {
+        if (Array.isArray(parsed?.items) && parsed.items.length) {
           dispatch({ type: "CLEAR" });
           for (const it of parsed.items) {
-            dispatch({ type: "ADD", item: { id: it.id, slug: it.slug, name: it.name, price_gbp: it.price_gbp, stripe_price_id: it.stripe_price_id, image: it.image }, qty: it.qty });
+            if (typeof it.slug === "string" && typeof it.name === "string" && Number.isFinite(it.price_gbp) && it.price_gbp >= 0 && Number.isInteger(it.qty) && it.qty > 0) {
+              dispatch({ type: "ADD", item: { id: it.id, slug: it.slug, name: it.name, price_gbp: it.price_gbp, image: it.image }, qty: Math.min(it.qty, 99) });
+            }
           }
         }
       }
     } catch {}
+    setCartLoaded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    if (!cartLoaded) return;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
-  }, [state]);
+  }, [state, cartLoaded]);
 
   const api = useMemo(() => {
     const subtotal = state.items.reduce((acc, it) => acc + it.price_gbp * it.qty, 0);

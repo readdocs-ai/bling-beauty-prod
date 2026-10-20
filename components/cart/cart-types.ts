@@ -3,7 +3,6 @@ export type CartItem = {
   slug: string;
   name: string;
   price_gbp: number;
-  stripe_price_id: string;
   image: string;
   qty: number;
 };

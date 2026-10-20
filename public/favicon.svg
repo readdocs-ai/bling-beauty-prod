@@ -1,0 +1,21 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bling Beauty Glow mark">
+  <defs>
+    <linearGradient id="tile" x1="42" y1="36" x2="214" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F47C20"/>
+      <stop offset="0.52" stop-color="#FF9B3D"/>
+      <stop offset="1" stop-color="#FFD166"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="68" y1="68" x2="188" y2="194" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8F1"/>
+      <stop offset="0.48" stop-color="#FFE2CF"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="22" y="22" width="212" height="212" rx="58" fill="url(#tile)"/>
+  <rect x="31" y="31" width="194" height="194" rx="50" fill="none" stroke="#FFF8F1" stroke-opacity="0.5" stroke-width="3"/>
+  <path d="M88 78C88 71.373 93.373 66 100 66H144C166.091 66 181 80.345 181 100C181 113.009 174.512 122.904 163.95 128.126C176.458 132.735 185 144.013 185 158C185 179.55 168.357 194 146 194H100C93.373 194 88 188.627 88 182V78Z" fill="#1E1B18" fill-opacity="0.95"/>
+  <path d="M112 90H141C152.84 90 159 96.324 159 105.5C159 114.676 152.84 121 141 121H112V90Z" fill="url(#shine)"/>
+  <path d="M112 139H145C158.126 139 164 146.416 164 156.5C164 166.584 158.126 174 145 174H112V139Z" fill="url(#shine)"/>
+  <path d="M199 72L205 88L221 94L205 100L199 116L193 100L177 94L193 88L199 72Z" fill="#FFF8F1"/>
+  <path d="M64 165L68 176L79 180L68 184L64 195L60 184L49 180L60 176L64 165Z" fill="#FFF8F1" fill-opacity="0.9"/>
+</svg>

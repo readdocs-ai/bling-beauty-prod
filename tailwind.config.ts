@@ -5,15 +5,24 @@ export default {
   theme: {
     extend: {
       colors: {
-        ivory: "#F8F3EA",
-        "soft-black": "#151515",
-        champagne: "#D6B77B",
-        rose: "#E7C3C3",
-        mist: "#F4F4F5",
+        ivory: "#FFF8F1",
+        cream: "#FAF1E7",
+        peach: "#FFE2CF",
+        orange: "#F47C20",
+        tangerine: "#FF9B3D",
+        coral: "#FF6A3D",
+        gold: "#FFD166",
+        "soft-black": "#1E1B18",
+        charcoal: "#191512",
+        cocoa: "#6F4A35",
+        mist: "#F6EEE7",
+        champagne: "#E9B66D",
+        rose: "#F4B8A4",
       },
       boxShadow: {
-        luxe: "0 20px 50px rgba(0,0,0,0.10)",
-        soft: "0 12px 30px rgba(0,0,0,0.08)",
+        luxe: "0 30px 80px rgba(92, 48, 18, 0.16)",
+        soft: "0 16px 45px rgba(92, 48, 18, 0.10)",
+        glow: "0 18px 60px rgba(244, 124, 32, 0.22)",
       },
       borderRadius: {
         xl2: "1.25rem",
@@ -23,8 +32,9 @@ export default {
         sans: ["var(--font-sans)"],
       },
       backgroundImage: {
-        "gold-fade":
-          "radial-gradient(1200px 600px at 10% 10%, rgba(214,183,123,0.25), transparent 60%), radial-gradient(900px 500px at 90% 20%, rgba(231,195,195,0.25), transparent 60%)",
+        "vitamin-glow":
+          "radial-gradient(900px 450px at 8% 8%, rgba(255,155,61,0.24), transparent 60%), radial-gradient(760px 420px at 92% 18%, rgba(255,106,61,0.18), transparent 58%), linear-gradient(180deg, #FFF8F1 0%, #FAF1E7 100%)",
+        "orange-luxe": "linear-gradient(135deg, #F47C20 0%, #FF9B3D 48%, #FFD166 100%)",
       },
     },
   },

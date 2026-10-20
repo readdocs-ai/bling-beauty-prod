@@ -1,26 +1,9 @@
-import { listProducts } from "@/lib/products";
-import { ProductCard } from "@/components/product/product-card";
-import { Badge } from "@/components/ui/badge";
+import { luxuryItems } from "@/lib/luxury-catalogue";
+import { LuxuryTile } from "@/components/luxury/luxury-tile";
 
+export const metadata = { title: "Luxury Skincare Boutique | Bling Beauty", description: "Explore Bling Beauty's curated selection of prestige skincare, luxury gift sets and exceptional beauty rituals." };
 export default async function ShopPage() {
-  const products = await listProducts();
-
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl md:text-4xl">Shop</h1>
-          <p className="mt-2 text-sm text-soft-black/70">Cosmetics + aesthetic enhancement essentials.</p>
-        </div>
-        <div className="flex gap-2">
-          <Badge>Free UK shipping</Badge>
-          <Badge>Secure Stripe checkout</Badge>
-        </div>
-      </div>
-
-      <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((p) => <ProductCard key={p.id} product={p} />)}
-      </div>
-    </div>
-  );
+ return <div className="luxury-page min-h-screen"><section className="luxury-shop-hero"><div className="mx-auto max-w-7xl px-6 py-20 md:py-28"><p className="luxury-eyebrow">BLING BEAUTY / THE BOUTIQUE</p><h1 className="mt-7 font-display text-6xl tracking-tight md:text-8xl">The skincare <em>edit.</em></h1><p className="mt-7 max-w-xl text-lg leading-8 text-[#6d6258]">Discover considered skincare, extraordinary gift sets from our own BLING collection.</p><div className="mt-10 flex items-center gap-4 text-[11px] uppercase tracking-[.2em] text-[#8d7967]"><span className="h-px w-12 bg-[#a78b73]"/> CURATED LUXURY</div></div></section>
+ <section className="mx-auto max-w-7xl px-6 py-16"><div className="mb-9 flex flex-wrap items-end justify-between gap-4 border-b border-[#d9cdc0] pb-6"><div><p className="luxury-eyebrow">THE COLLECTION</p><h2 className="mt-3 font-display text-4xl">Explore the boutique</h2></div><span className="text-sm text-[#81766b]">{luxuryItems.length} luxury collections</span></div>
+ <div className="mb-10"><p className="text-sm text-[#786a5e]">All six luxury collections are priced at £130.00. You can prepare a basket; payment will be available after our secure checkout is activated. Please confirm product availability before ordering.</p></div><div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{luxuryItems.map(item=><LuxuryTile key={item.slug} item={item}/>)}</div></section><section className="border-t border-[#e2d8cd] bg-[#f1e9df]"><div className="mx-auto grid max-w-7xl gap-7 px-6 py-12 text-center md:grid-cols-3"><div><div className="font-display text-xl">Curated beauty</div><p className="mt-2 text-sm text-[#75685e]">Six original BLING skincare gift concepts</p></div><div><div className="font-display text-xl">Elevated gifting</div><p className="mt-2 text-sm text-[#75685e]">Thoughtful beauty for special moments</p></div><div><div className="font-display text-xl">The everyday ritual</div><p className="mt-2 text-sm text-[#75685e]">Making space for a little indulgence</p></div></div></section></div>;
 }

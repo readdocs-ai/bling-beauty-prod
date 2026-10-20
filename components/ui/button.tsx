@@ -1,56 +1,36 @@
-import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/components/utils/cn";
+import type { ComponentProps } from "react";
 
-type Variant = "default" | "ghost";
+type ButtonProps = ComponentProps<"button"> & { variant?: "primary" | "ghost" | "danger" };
 
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: Variant;
-};
-
-const base =
-  "inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-champagne/30 disabled:opacity-50 disabled:pointer-events-none";
-
-const variants: Record<Variant, string> = {
-  default:
-    "bg-soft-black text-white shadow-soft hover:opacity-95 active:opacity-90",
-  ghost:
-    "bg-transparent text-current hover:bg-current/5 shadow-none active:opacity-90",
-};
-
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", type = "button", ...props }, ref) => {
-    return (
-      <button
-        ref={ref}
-        type={type}
-        className={cn(base, variants[variant], className)}
-        {...props}
-      />
-    );
-  }
-);
-
-Button.displayName = "Button";
-
-type ButtonLinkProps = React.ComponentProps<typeof Link> & {
-  className?: string;
-  children: React.ReactNode;
-  variant?: Variant;
-};
-
-export function ButtonLink({
-  className,
-  children,
-  variant = "default",
-  ...props
-}: ButtonLinkProps) {
+export function Button({ className, variant = "primary", ...props }: ButtonProps) {
   return (
-    <Link className={cn(base, variants[variant], className)} {...props}>
-      {children}
-    </Link>
+    <button
+      className={cn(
+        "inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-orange/30 active:translate-y-[1px]",
+        variant === "primary" && "bg-orange-luxe text-white shadow-glow hover:brightness-105",
+        variant === "ghost" && "border border-orange/20 bg-white/45 text-soft-black hover:border-orange/35 hover:bg-white/70",
+        variant === "danger" && "bg-red-600 text-white shadow-soft hover:opacity-95",
+        className
+      )}
+      {...props}
+    />
   );
 }
 
-// Optional: allows default import too
-export default Button;
+type ButtonLinkProps = ComponentProps<typeof Link> & { variant?: "primary" | "ghost" };
+
+export function ButtonLink({ className, variant = "primary", ...props }: ButtonLinkProps) {
+  return (
+    <Link
+      className={cn(
+        "inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-orange/30 active:translate-y-[1px]",
+        variant === "primary" && "bg-orange-luxe text-white shadow-glow hover:brightness-105",
+        variant === "ghost" && "border border-orange/20 bg-white/45 text-soft-black hover:border-orange/35 hover:bg-white/70",
+        className
+      )}
+      {...props}
+    />
+  );
+}

@@ -1,56 +1,27 @@
-import { Badge } from "@/components/ui/badge";
-
-export default function TermsPage() {
-  return (
-    <div className="bg-gold-fade">
-      <section className="mx-auto max-w-5xl px-4 py-16 md:py-20">
-        <div className="max-w-3xl">
-          <Badge>Legal</Badge>
-
-          <h1 className="mt-6 font-display text-4xl md:text-5xl">
-            Terms & conditions
-          </h1>
-
-          <p className="mt-6 text-base text-soft-black/70">
-            By using this website and placing an order with Bling Beauty
-            Products, you agree to the following terms.
-          </p>
-        </div>
-
-        <div className="mt-12 grid gap-6">
-          <div className="rounded-2xl bg-white/70 p-6 shadow-soft">
-            <h2 className="font-semibold text-lg">Products</h2>
-            <p className="mt-2 text-sm text-soft-black/70">
-              All products are described as accurately as possible. Colours and
-              finishes may vary slightly due to screen settings.
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-white/70 p-6 shadow-soft">
-            <h2 className="font-semibold text-lg">Orders</h2>
-            <p className="mt-2 text-sm text-soft-black/70">
-              Orders are subject to availability and acceptance. We reserve the
-              right to refuse or cancel orders where necessary.
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-white/70 p-6 shadow-soft">
-            <h2 className="font-semibold text-lg">Pricing & payment</h2>
-            <p className="mt-2 text-sm text-soft-black/70">
-              All prices are listed in GBP. Payments are securely handled by
-              Stripe.
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-white/70 p-6 shadow-soft">
-            <h2 className="font-semibold text-lg">Liability</h2>
-            <p className="mt-2 text-sm text-soft-black/70">
-              Bling Beauty Products is not liable for indirect or consequential
-              damages arising from the use of our products.
-            </p>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
+import Link from "next/link";
+export const metadata = { title: 'Terms and conditions' + " | Bling Beauty Products", description: 'Information about ordering from Bling Beauty Products.' };
+export default function Page(){ return (
+<main className="min-h-[65vh] bg-[#fffaf6] px-5 py-16"><div className="mx-auto max-w-3xl space-y-6 text-[#45372f]">
+<Link href="/policies" className="text-sm underline">Store policies</Link>
+<h1 className="font-display text-4xl">Terms and conditions</h1>
+<section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">About these terms</h2>
+<p className="mb-3">These terms apply to purchases from Bling Beauty Products through this website. Contact us before ordering if you need clarification.</p>
+<p className="mb-3">The business legal name, registered or trading address and VAT details (where applicable) must be verified and published before taking live orders.</p>
+</section>
+<section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Products and prices</h2>
+<p className="mb-3">Product descriptions and prices are shown in pounds sterling. Availability may change. We may decline an order where a product is unavailable or a price is clearly incorrect, and will refund any payment taken for an unfulfilled order.</p>
+</section>
+<section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Orders and payment</h2>
+<p className="mb-3">Submitting an order is an offer to buy. An order is accepted when we confirm acceptance. Payment must be completed using the checkout methods displayed on the website. Do not send payment details by email or WhatsApp.</p>
+</section>
+<section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Delivery and returns</h2>
+<p className="mb-3">UK delivery information is on our shipping page. Your statutory rights remain unaffected. Please read our returns policy for cancellation, hygiene-sealed goods and faulty items.</p>
+</section>
+<section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Consumer rights</h2>
+<p className="mb-3">Nothing in these terms excludes or limits rights that cannot legally be excluded, including rights under the Consumer Rights Act 2015.</p>
+</section>
+<section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Contact</h2>
+<p className="mb-3">For order queries or complaints, email info@blingbeautyproducts.com.</p>
+</section>
+<p className="text-sm">Questions? Email <a className="underline" href="mailto:info@blingbeautyproducts.com">info@blingbeautyproducts.com</a>.</p>
+</div></main>); }

@@ -9,7 +9,6 @@ export type Product = {
   highlights: string[];
   images: string[];
   badge?: "Best Seller" | "New" | "Limited" | null;
-  stripe_price_id: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;

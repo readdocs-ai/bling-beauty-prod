@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/cart/cart-context";
 
-export function AddToCartButton({ item }: { item: { id: string; slug: string; name: string; price_gbp: number; stripe_price_id: string; image: string } }) {
+export function AddToCartButton({ item }: { item: { id: string; slug: string; name: string; price_gbp: number; image: string } }) {
   const { add } = useCart();
   const [added, setAdded] = useState(false);
 

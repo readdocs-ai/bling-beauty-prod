@@ -19,22 +19,16 @@ export function SiteHeader() {
   const { count } = useCart();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-champagne/25 bg-soft-black/95 text-ivory backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-        <Link href="/" className="group flex items-center gap-4">
-          <span className="relative h-10 w-10 overflow-hidden rounded-[14px] bg-soft-black shadow-[0_6px_18px_rgba(0,0,0,0.35)] border border-champagne/25">
-            <Image
-              src="/branding/logo-mark.svg"
-              alt="Bling Beauty mark"
-              fill
-              className="object-cover"
-              priority
-            />
+    <header className="sticky top-0 z-50 border-b border-orange/15 bg-ivory/88 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <Link href="/" className="group flex items-center gap-3">
+          <span className="relative h-11 w-11 overflow-hidden rounded-2xl shadow-soft ring-1 ring-orange/20">
+            <Image src="/branding/logo-mark.svg" alt="Bling Beauty Glow mark" fill className="object-cover" priority />
           </span>
-
-          <span className="font-display text-[22px] font-semibold tracking-[-0.01em] bg-gradient-to-r from-[#FFD700] via-[#FFF2A8] to-[#FFC300] bg-clip-text text-transparent drop-shadow-[0_0_6px_rgba(255,215,0,0.25)]">
-  Bling Beauty
-</span>
+          <span className="grid leading-none">
+            <span className="font-display text-xl font-semibold tracking-tight text-soft-black">Bling Beauty</span>
+            <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.24em] text-orange">Prestige skincare</span>
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
@@ -43,8 +37,8 @@ export function SiteHeader() {
               key={i.href}
               href={i.href}
               className={cn(
-                "rounded-xl px-4 py-2 text-sm text-ivory/80 transition hover:bg-ivory/10 hover:text-ivory",
-                pathname === i.href && "bg-ivory/10 text-ivory"
+                "rounded-full px-4 py-2 text-sm font-medium text-cocoa transition hover:bg-orange/10 hover:text-soft-black",
+                pathname === i.href && "bg-orange/10 text-soft-black"
               )}
             >
               {i.label}
@@ -53,14 +47,11 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <ButtonLink href="/shop" variant="ghost" className="hidden md:inline-flex">
-            Browse
-          </ButtonLink>
-
-          <ButtonLink href="/cart" className="relative">
+          <ButtonLink href="/shop" variant="ghost" className="hidden md:inline-flex">The boutique</ButtonLink>
+          <ButtonLink href="/cart" className="relative px-5 py-2.5">
             Cart
             {count > 0 && (
-              <span className="ml-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-champagne px-2 text-xs font-semibold text-soft-black">
+              <span className="ml-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-white px-2 text-xs font-bold text-orange">
                 {count}
               </span>
             )}

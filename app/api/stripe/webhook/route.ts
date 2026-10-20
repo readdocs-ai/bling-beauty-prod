@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
+  apiVersion: "2026-03-25.dahlia",
 });
 
 const supabase = createClient(
@@ -50,9 +50,9 @@ export async function POST(req: Request) {
         amount_total: session.amount_total ?? null,
         currency: session.currency ?? null,
         customer_email: session.customer_details?.email ?? null,
-        shipping_name: session.shipping_details?.name ?? null,
-        shipping_address: session.shipping_details?.address
-          ? (session.shipping_details.address as any)
+        shipping_name: session.collected_information?.shipping_details?.name ?? null,
+        shipping_address: session.collected_information?.shipping_details?.address
+          ? (session.collected_information?.shipping_details.address as any)
           : null,
         status: "paid",
       },

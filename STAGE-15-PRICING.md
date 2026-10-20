@@ -1,0 +1,1 @@
+All six luxury preview collection prices set to GBP 130.00. This changes local preview catalogue pricing only. Supabase product records are not modified; previews remain non-purchasable pending catalogue and checkout implementation.

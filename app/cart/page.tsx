@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/components/cart/cart-context";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -12,28 +13,44 @@ function formatGBP(n: number) {
 
 export default function CartPage() {
   const { items, subtotal, remove, setQty, clear } = useCart();
-
-  async function goCheckout() {
-    const res = await fetch("/api/checkout", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ items }),
-    });
-    const data = await res.json();
-    if (data?.url) window.location.href = data.url;
-    else alert(data?.error ?? "Checkout error");
+  const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
+  const [shipping, setShipping] = useState({ address1: "", address2: "", city: "", postcode: "", country: "GB" as const });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  // A browser may restore this page from its back/forward cache after payment.
+  // The old pending state must not leave checkout permanently disabled.
+  useEffect(() => {
+    const restore = () => setBusy(false);
+    window.addEventListener("pageshow", restore);
+    window.addEventListener("focus", restore);
+    return () => {
+      window.removeEventListener("pageshow", restore);
+      window.removeEventListener("focus", restore);
+    };
+  }, []);
+  async function checkout() {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: items.map(i => ({ slug: i.slug, quantity: i.qty })), customer, shipping }) });
+      const result = await response.json();
+      if (!response.ok || !result.redirectUrl) throw new Error(result.error || "Unable to start payment");
+      // Same-tab navigation avoids an orphaned cart tab showing "Connecting".
+      // Worldpay owns the destination; server-side code validates its hostname.
+      window.location.assign(result.redirectUrl);
+    } catch (e) { setError(e instanceof Error ? e.message : "Checkout unavailable"); setBusy(false); }
   }
+
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
       <h1 className="font-display text-3xl md:text-4xl">Your cart</h1>
-      <p className="mt-2 text-sm text-soft-black/70">Free shipping within the UK.</p>
+      <p className="mt-2 text-sm text-soft-black/70">Discover your favourite skincare and review your basket.</p>
 
       {items.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-soft-black/10 bg-white/60 p-8 text-center shadow-soft">
           <div className="font-display text-2xl">Cart is empty</div>
-          <p className="mt-2 text-sm text-soft-black/70">Browse the collection and add something you love.</p>
-          <div className="mt-6"><ButtonLink href="/shop">Go shopping</ButtonLink></div>
+          <p className="mt-2 text-sm text-soft-black/70">Browse our collection to begin your beauty ritual.</p>
+          <div className="mt-6"><ButtonLink href="/shop">Browse the collection</ButtonLink></div>
         </div>
       ) : (
         <div className="mt-10 grid gap-8 lg:grid-cols-[1.4fr_0.6fr]">
@@ -47,7 +64,7 @@ export default function CartPage() {
                 <div className="flex-1">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <Link href={`/product/${it.slug}`} className="font-display text-lg hover:underline">{it.name}</Link>
+                      <Link href={it.id.startsWith("luxury-") ? `/luxury/${it.slug}` : `/product/${it.slug}`} className="font-display text-lg hover:underline">{it.name}</Link>
                       <div className="mt-1 text-sm text-soft-black/70">{formatGBP(it.price_gbp)}</div>
                     </div>
 
@@ -69,11 +86,22 @@ export default function CartPage() {
               <div className="text-sm font-semibold">Subtotal</div>
               <div className="text-sm font-semibold">{formatGBP(subtotal)}</div>
             </div>
-            <div className="mt-2 text-xs text-soft-black/60">Free UK shipping.</div>
+            <div className="mt-2 text-xs text-soft-black/60">Free UK delivery. Secure payment with Worldpay.</div>
 
             <div className="mt-6 grid gap-3">
-              <Button onClick={goCheckout} className="w-full justify-center">Pay with Stripe</Button>
-              <ButtonLink href="/shop" variant="ghost" className="w-full justify-center">Continue shopping</ButtonLink>
+              <form onSubmit={e => { e.preventDefault(); void checkout(); }} className="grid gap-3">
+                <h2 className="font-display text-xl">Delivery details</h2>
+                <Input required placeholder="Full name" autoComplete="name" value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })} />
+                <Input required type="email" placeholder="Email address" autoComplete="email" value={customer.email} onChange={e => setCustomer({ ...customer, email: e.target.value })} />
+                <Input placeholder="Telephone (optional)" autoComplete="tel" value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })} />
+                <Input required placeholder="Address line 1" autoComplete="address-line1" value={shipping.address1} onChange={e => setShipping({ ...shipping, address1: e.target.value })} />
+                <Input placeholder="Address line 2" autoComplete="address-line2" value={shipping.address2} onChange={e => setShipping({ ...shipping, address2: e.target.value })} />
+                <Input required placeholder="Town or city" autoComplete="address-level2" value={shipping.city} onChange={e => setShipping({ ...shipping, city: e.target.value })} />
+                <Input required placeholder="UK postcode" autoComplete="postal-code" value={shipping.postcode} onChange={e => setShipping({ ...shipping, postcode: e.target.value })} />
+                {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+                <Button disabled={busy} className="w-full justify-center">{busy ? "Connecting to Worldpay…" : "Proceed to secure payment"}</Button>
+              </form>
+              <ButtonLink href="/shop" variant="ghost" className="w-full justify-center">Continue browsing</ButtonLink>
               <Button variant="ghost" onClick={clear} className="w-full justify-center">Clear cart</Button>
             </div>
           </div>

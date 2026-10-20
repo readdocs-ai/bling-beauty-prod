@@ -16,7 +16,7 @@ async function loginAction(formData: FormData) {
   redirect("/admin/login?error=1");
 }
 
-export default async function AdminLogin({ searchParams }: { searchParams: { error?: string } }) {
+export default function AdminLogin({ searchParams }: { searchParams: { error?: string } }) {
   const error = searchParams?.error === "1";
 
   return (

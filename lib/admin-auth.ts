@@ -1,25 +1,20 @@
-import { cookies } from "next/headers";
-import crypto from "crypto";
+import { cookies } from 'next/headers';
+import { createAdminSession, ADMIN_SESSION_MAX_AGE } from '@/lib/admin-session';
 
-const COOKIE = "bbp_admin";
-
-function hash(value: string) {
-  return crypto.createHash("sha256").update(value).digest("hex");
-}
+const COOKIE = 'bbp_admin';
 
 export async function setAdminCookie() {
-  const secret = (process.env.ADMIN_USERNAME ?? "") + ":" + (process.env.ADMIN_PASSWORD ?? "");
   const store = await cookies();
-  store.set(COOKIE, hash(secret), {
+  store.set(COOKIE, await createAdminSession(), {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: ADMIN_SESSION_MAX_AGE,
   });
 }
 
 export async function clearAdminCookie() {
   const store = await cookies();
-  store.set(COOKIE, "", { path: "/", maxAge: 0 });
+  store.set(COOKIE, '', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 0 });
 }

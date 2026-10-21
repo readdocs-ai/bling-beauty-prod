@@ -10,7 +10,7 @@ export default function WorldpaySdkTestPage() {
   return (
     <main className="mx-auto max-w-2xl px-5 py-12">
       <h1 className="font-display text-3xl">Worldpay Access Checkout — SDK test</h1>
-      <p className="mt-4 text-sm">Preview only. This page checks whether Worldpay can load its secure card fields. It can generate a one-time Worldpay Try card session and securely hand it to a Preview-only BLING endpoint, but cannot authorise or capture payments. Use test cards only.</p>
+      <p className="mt-4 text-sm">Preview only. This page checks whether Worldpay can load its secure card fields. It can generate a one-time Worldpay Try card session and securely hand it to a Preview-only BLING endpoint, and can optionally attempt one Worldpay Try £1.00 authorisation after explicit confirmation. It never captures payments, creates orders or handles 3D Secure. Use test cards only.</p>
       <SdkFields checkoutId={checkoutId} />
       <p className="mt-5 text-xs">Existing HPP checkout is unchanged. Production ordering remains controlled by the existing database switch.</p>
     </main>

@@ -30,6 +30,8 @@ export default function SdkFields({ checkoutId }: { checkoutId: string }) {
   const [generating, setGenerating] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [handoffStatus, setHandoffStatus] = useState("");
+  const [tryAuth, setTryAuth] = useState(false);
+  const [authorisationStatus, setAuthorisationStatus] = useState("");
   const [diagnostics, setDiagnostics] = useState<SafeDiagnostics | null>(null);
   const instance = useRef<CheckoutInstance | null>(null);
   const initialized = useRef(false);
@@ -55,6 +57,7 @@ export default function SdkFields({ checkoutId }: { checkoutId: string }) {
   }, [checkoutId]);
   const generateTestSession = useCallback(() => {
     setHandoffStatus("");
+    setAuthorisationStatus("");
     if (!instance.current?.generateSessionState || generating) return;
     setGenerating(true);
     setSessionReady(false);
@@ -74,18 +77,23 @@ export default function SdkFields({ checkoutId }: { checkoutId: string }) {
       const token = typeof session === "string" ? session : session && typeof session === "object" && "sessionState" in session && typeof session.sessionState === "string" ? session.sessionState : null;
       if (!token) { setHandoffStatus("SDK returned a success result but not a recognised session string."); return; }
       try {
-        const response = await fetch("/admin/api/worldpay-session-check", {
+        const response = await fetch(tryAuth ? "/admin/api/worldpay-try-authorise" : "/admin/api/worldpay-session-check", {
           method: "POST", credentials: "same-origin", cache: "no-store",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionState: token }),
+          body: JSON.stringify(tryAuth ? { sessionState: token, confirmation: "AUTHORISE_TRY_100P" } : { sessionState: token }),
         });
         const result = await response.json();
-        setHandoffStatus(response.ok && result.accepted
-          ? "Secure session reached BLING server successfully. No payment was authorised."
-          : `Server handoff failed (HTTP ${response.status}).`);
-      } catch { setHandoffStatus("Could not reach BLING server for session handoff."); }
+        if (tryAuth) {
+          const status = result.authorized ? "TRY AUTHORISED (not captured)" : "TRY not authorised / unconfirmed";
+          setAuthorisationStatus(`${status}; HTTP ${result.httpStatus ?? response.status}; reference ${result.reference ?? "unavailable"}. No order created. Never retry this card session.`);
+        } else {
+          setHandoffStatus(response.ok && result.accepted
+            ? "Secure session reached BLING server successfully. No payment was authorised."
+            : `Server handoff failed (HTTP ${response.status}).`);
+        }
+      } catch { setHandoffStatus("Request outcome uncertain. Do not reuse the card session."); }
     });
-  }, [generating]);
+  }, [generating, tryAuth]);
   useEffect(() => {
     if (scriptReady) initialise();
     return () => { instance.current?.remove?.(); instance.current = null; };
@@ -101,8 +109,9 @@ export default function SdkFields({ checkoutId }: { checkoutId: string }) {
           <div><label className="block text-sm font-semibold" htmlFor="bling-card-expiry">Expiry</label><div id="bling-card-expiry" className="mt-2 h-12 rounded-lg border border-gray-300 px-3 py-2" /></div>
           <div><label className="block text-sm font-semibold" htmlFor="bling-card-cvv">CVC</label><div id="bling-card-cvv" className="mt-2 h-12 rounded-lg border border-gray-300 px-3 py-2" /></div>
         </div>
-        <p className="mt-6 text-sm text-amber-800">Preview-only card-session generation test. No payment authorisation is enabled. Use only Worldpay test card details.</p>
-        <button type="button" onClick={generateTestSession} disabled={generating || !instance.current} className="mt-4 rounded-lg bg-amber-600 px-5 py-3 text-white disabled:opacity-50">{generating ? "Generating session…" : "Generate test card session"}</button>
+        <p className="mt-6 text-sm text-amber-800">Preview / Worldpay Try only. Use test cards only. Authorisation does not capture money, create orders or perform 3D Secure.</p>
+        <label className="mt-4 flex items-start gap-2 text-sm"><input type="checkbox" checked={tryAuth} disabled={generating} onChange={e => setTryAuth(e.target.checked)} /> I explicitly approve a single Worldpay Try £1.00 authorisation attempt (no capture). This uses a new, single-use card session.</label>
+        <button type="button" onClick={generateTestSession} disabled={generating || !instance.current} className="mt-4 rounded-lg bg-amber-600 px-5 py-3 text-white disabled:opacity-50">{generating ? "Submitting…" : tryAuth ? "Generate session and attempt £1.00 Try authorisation" : "Generate test card session (no payment)"}</button>
         {diagnostics && <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs" role="status">
           <p className="font-semibold">Safe SDK callback diagnostics (no card data or tokens)</p>
           <p>Callback: {diagnostics.callback}</p>
@@ -113,6 +122,7 @@ export default function SdkFields({ checkoutId }: { checkoutId: string }) {
         </div>}
         {sessionReady && <p className="mt-3 text-sm text-green-800">Session generation passed.</p>}
         {handoffStatus && <p role="status" className="mt-3 text-sm font-medium">{handoffStatus}</p>}
+        {authorisationStatus && <p role="status" className="mt-3 text-sm font-medium">{authorisationStatus}</p>}
       </form>
     </section>
   );

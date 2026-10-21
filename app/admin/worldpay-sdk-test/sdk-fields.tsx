@@ -85,7 +85,9 @@ export default function SdkFields({ checkoutId }: { checkoutId: string }) {
         const result = await response.json();
         if (tryAuth) {
           const status = result.authorized ? "TRY AUTHORISED (not captured)" : "TRY not authorised / unconfirmed";
-          setAuthorisationStatus(`${status}; HTTP ${result.httpStatus ?? response.status}; reference ${result.reference ?? "unavailable"}. No order created. Never retry this card session.`);
+          const providerDetail = [result.errorName, result.errorCode, ...(Array.isArray(result.validationFields) ? result.validationFields : [])]
+            .filter((v: unknown) => typeof v === "string" && /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/.test(v)).join(" / ");
+          setAuthorisationStatus(`${status}; HTTP ${result.httpStatus ?? response.status}; reference ${result.reference ?? "unavailable"}${providerDetail ? `; provider codes/fields: ${providerDetail}` : ""}. No order created. Never retry this card session.`);
         } else {
           setHandoffStatus(response.ok && result.accepted
             ? "Secure session reached BLING server successfully. No payment was authorised."

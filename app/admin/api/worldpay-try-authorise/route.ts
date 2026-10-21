@@ -5,11 +5,38 @@ import { randomUUID } from "node:crypto";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store" };
-const schema = z.object({ sessionState: z.string().min(12).max(12000), confirmation: z.literal("AUTHORISE_TRY_100P") }).strict();
+const schema = z.object({ sessionState: z.string().url().min(12).max(12000), confirmation: z.literal("AUTHORISE_TRY_100P") }).strict();
+
+// Worldpay's one-time checkout session must originate from the Try host. Never log or return it.
+function isTrySessionHref(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "try.access.worldpay.com" &&
+      !url.username && !url.password && !url.hash && !url.search &&
+      url.pathname.includes("/sessions/");
+  } catch { return false; }
+}
+
+// Keep diagnostic values tightly allowlisted; upstream messages may contain customer/session data.
+function safeProviderCode(value: unknown): string | undefined {
+  return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/.test(value) ? value : undefined;
+}
+function safeProviderDiagnostics(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const data = value as Record<string, unknown>;
+  return {
+    errorName: safeProviderCode(data.errorName),
+    errorCode: safeProviderCode(data.errorCode),
+    // Field names only, never validation descriptions or rejected values.
+    validationFields: Array.isArray(data.validationErrors)
+      ? data.validationErrors.slice(0, 8).map(v => v && typeof v === "object" ? safeProviderCode((v as Record<string, unknown>).field) : undefined).filter(Boolean)
+      : undefined,
+  };
+}
 
 /** Isolated £1.00 TRY authorisation only. No checkout/order writes, capture, or 3DS bypass claims. */
 export async function POST(request: Request) {
-  if (process.env.VERCEL_ENV !== "preview" || process.env.WORLDPAY_ENVIRONMENT === "live")
+  if (process.env.VERCEL_ENV !== "preview" || process.env.WORLDPAY_ENVIRONMENT !== "try")
     return NextResponse.json({ error: "Preview Try only" }, { status: 404, headers });
   let origin: URL;
   try { origin = new URL(request.headers.get("origin") || ""); } catch { return NextResponse.json({ error: "Origin rejected" }, { status: 403, headers }); }
@@ -26,6 +53,8 @@ export async function POST(request: Request) {
   try { raw = await request.json(); } catch { return NextResponse.json({ error: "Invalid request" }, { status: 400, headers }); }
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400, headers });
+  if (!isTrySessionHref(parsed.data.sessionState))
+    return NextResponse.json({ error: "Invalid Try card session" }, { status: 400, headers });
   const reference = `BLING-TRY-${randomUUID()}`;
   const body = {
     transactionReference: reference,
@@ -54,7 +83,7 @@ export async function POST(request: Request) {
     const outcome = typeof data.outcome === "string" && /^[A-Za-z ]{1,40}$/.test(data.outcome) ? data.outcome : "unconfirmed";
     const correlation = response.headers.get("WP-CorrelationId");
     return NextResponse.json({
-      reference, httpStatus: response.status, outcome,
+      reference, httpStatus: response.status, outcome, ...safeProviderDiagnostics(data),
       authorized: response.status === 201 && outcome.toLowerCase() === "authorized",
       captured: false, orderCreated: false,
       correlationId: correlation && /^[a-zA-Z0-9-]{1,100}$/.test(correlation) ? correlation : undefined,

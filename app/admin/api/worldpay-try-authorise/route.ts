@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store" };
-const schema = z.object({ sessionState: z.string().url().min(12).max(12000), confirmation: z.literal("AUTHORISE_TRY_100P") }).strict();
+const schema = z.object({ cardSession: z.string().url().min(12).max(12000), cvcSession: z.string().url().min(12).max(12000), confirmation: z.literal("AUTHORISE_TRY_100P") }).strict();
 
 // Worldpay's one-time checkout session must originate from the Try host. Never log or return it.
 function isTrySessionHref(value: string): boolean {
@@ -18,6 +18,13 @@ function isTrySessionHref(value: string): boolean {
 }
 
 // Keep diagnostic values tightly allowlisted; upstream messages may contain customer/session data.
+function isTryTokenHref(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "try.access.worldpay.com" &&
+      url.pathname.startsWith("/tokens/") && !url.search && !url.hash && !url.username && !url.password;
+  } catch { return false; }
+}
 function safeProviderCode(value: unknown): string | undefined {
   return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/.test(value) ? value : undefined;
 }
@@ -56,11 +63,41 @@ export async function POST(request: Request) {
   try { raw = await request.json(); } catch { return NextResponse.json({ error: "Invalid request" }, { status: 400, headers }); }
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400, headers });
-  if (!isTrySessionHref(parsed.data.sessionState))
+  if (!isTrySessionHref(parsed.data.cardSession) || !isTrySessionHref(parsed.data.cvcSession))
     return NextResponse.json({ error: "Invalid Try card session" }, { status: 400, headers });
   // Unique reference stays within Worldpay's documented 64-character limit.
   const reference = `BLING-TRY-${randomUUID()}`;
-  const body = {
+  const credentials = `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`;
+  // Worldpay v7 card/checkout requires a verified token and a separate CVC session.
+  // The card session is consumed only by Verified Tokens, never by Card Payments.
+  try {
+    const tokenResponse = await fetch("https://try.access.worldpay.com/verifiedTokens/oneTime", {
+      method: "POST",
+      headers: {
+        Authorization: credentials,
+        Accept: "application/vnd.worldpay.verified-tokens-v3.hal+json",
+        "Content-Type": "application/vnd.worldpay.verified-tokens-v3.hal+json",
+      },
+      body: JSON.stringify({
+        paymentInstrument: { type: "card/checkout", sessionHref: parsed.data.cardSession },
+        merchant: { entity }, verificationCurrency: "GBP",
+      }), cache: "no-store", signal: AbortSignal.timeout(15000),
+    });
+    const tokenData: unknown = await tokenResponse.json().catch(() => null);
+    const tokenObject = tokenData && typeof tokenData === "object" ? tokenData as Record<string, unknown> : {};
+    const embedded = tokenObject._embedded && typeof tokenObject._embedded === "object" ? tokenObject._embedded as Record<string, unknown> : {};
+    const tokenResource = embedded.token && typeof embedded.token === "object" ? embedded.token as Record<string, unknown> : {};
+    const links = tokenResource._links && typeof tokenResource._links === "object" ? tokenResource._links as Record<string, unknown> :
+      tokenObject._links && typeof tokenObject._links === "object" ? tokenObject._links as Record<string, unknown> : {};
+    const tokenLink = links["tokens:token"] && typeof links["tokens:token"] === "object" ? links["tokens:token"] as Record<string, unknown> : {};
+    const tokenHref = typeof tokenLink.href === "string" ? tokenLink.href : "";
+    if (!tokenResponse.ok || !isTryTokenHref(tokenHref) || (tokenObject.outcome !== "verified" && !(embedded.verification && typeof embedded.verification === "object" && (embedded.verification as Record<string, unknown>).outcome === "verified"))) {
+      return NextResponse.json({ reference, stage: "verified-token", httpStatus: tokenResponse.status,
+        ...safeProviderDiagnostics(tokenObject), authorized: false, captured: false, orderCreated: false,
+        warning: "Verified token creation did not succeed. No authorisation attempted. Do not reuse sessions." },
+        { status: 502, headers });
+    }
+    const body = {
     transactionReference: reference,
     channel: "ecom",
     merchant: { entity },
@@ -68,14 +105,13 @@ export async function POST(request: Request) {
       requestAutoSettlement: { enabled: false },
       narrative: { line1: "BLING BEAUTY" },
       value: { currency: "GBP", amount: 100 },
-      paymentInstrument: { type: "card/checkout", sessionHref: parsed.data.sessionState },
+      paymentInstrument: { type: "card/checkout", tokenHref, cvcHref: parsed.data.cvcSession },
     },
   };
-  try {
     const response = await fetch("https://try.access.worldpay.com/cardPayments/customerInitiatedTransactions", {
       method: "POST",
       headers: {
-        Authorization: `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`,
+        Authorization: credentials,
         Accept: "application/vnd.worldpay.payments-v7+json",
         "Content-Type": "application/vnd.worldpay.payments-v7+json",
       },

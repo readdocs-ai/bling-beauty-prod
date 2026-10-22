@@ -17,11 +17,11 @@ const inspectCallback = (error: unknown, session: unknown): SafeDiagnostics => {
     errorType: error === null ? "null" : typeof error,
     errorCode: safeErrorCode(error),
     sessionType: session === null ? "null" : Array.isArray(session) ? "array" : typeof session,
-    sessionKeys: keys.filter(k => /^(sessionState|session|card|token|type)$/i.test(k)),
-    hasSessionState: isObject && typeof (session as Record<string, unknown>).sessionState === "string",
+    sessionKeys: keys.filter(k => /^(sessionState|session|card|cvv|cvc|token|type)$/i.test(k)),
+    hasSessionState: isObject && typeof (session as Record<string, unknown>).card === "string",
   };
 };
-type CheckoutInstance = { remove?: () => void; generateSessionState?: (callback: (error: unknown, session?: unknown) => void) => void };
+type CheckoutInstance = { remove?: () => void; generateSessions?: (callback: (error: unknown, session?: unknown) => void) => void };
 type WorldpayWindow = Window & { Worldpay?: { checkout?: { init: (settings: unknown, callback: (error: unknown, instance?: CheckoutInstance) => void) => void } } };
 
 export default function SdkFields({ checkoutId }: { checkoutId: string }) {
@@ -58,12 +58,12 @@ export default function SdkFields({ checkoutId }: { checkoutId: string }) {
   const generateTestSession = useCallback(() => {
     setHandoffStatus("");
     setAuthorisationStatus("");
-    if (!instance.current?.generateSessionState || generating) return;
+    if (!instance.current?.generateSessions || generating) return;
     setGenerating(true);
     setSessionReady(false);
     setDiagnostics(null);
     setStatus("Requesting a Worldpay Try card session…");
-    instance.current.generateSessionState(async (error, session) => {
+    instance.current.generateSessions(async (error, session) => {
       setGenerating(false);
       // Never display, log, transmit or persist the one-time card-session token.
       setDiagnostics(inspectCallback(error, session));
@@ -74,13 +74,16 @@ export default function SdkFields({ checkoutId }: { checkoutId: string }) {
       setSessionReady(true);
       setStatus("Worldpay Try card session generated successfully. No payment was submitted or authorised.");
       // Single-use session is sent immediately, never saved or printed.
-      const token = typeof session === "string" ? session : session && typeof session === "object" && "sessionState" in session && typeof session.sessionState === "string" ? session.sessionState : null;
-      if (!token) { setHandoffStatus("SDK returned a success result but not a recognised session string."); return; }
+      const cardSession = session && typeof session === "object" && "card" in session && typeof session.card === "string" ? session.card : null;
+      const cvcSession = session && typeof session === "object" && "cvv" in session && typeof session.cvv === "string" ? session.cvv :
+        session && typeof session === "object" && "cvc" in session && typeof session.cvc === "string" ? session.cvc : null;
+      const token = cardSession;
+      if (!token || (tryAuth && !cvcSession)) { setHandoffStatus("SDK returned a success result but not a recognised session string."); return; }
       try {
         const response = await fetch(tryAuth ? "/admin/api/worldpay-try-authorise" : "/admin/api/worldpay-session-check", {
           method: "POST", credentials: "same-origin", cache: "no-store",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(tryAuth ? { sessionState: token, confirmation: "AUTHORISE_TRY_100P" } : { sessionState: token }),
+          body: JSON.stringify(tryAuth ? { cardSession: token, cvcSession, confirmation: "AUTHORISE_TRY_100P" } : { sessionState: token }),
         });
         const result = await response.json();
         if (tryAuth) {
@@ -120,7 +123,7 @@ export default function SdkFields({ checkoutId }: { checkoutId: string }) {
           <p>Error type: {diagnostics.errorType}; code: {diagnostics.errorCode}</p>
           <p>Session result type: {diagnostics.sessionType}</p>
           <p>Recognised result keys: {diagnostics.sessionKeys.join(", ") || "none"}</p>
-          <p>Session-state property present: {diagnostics.hasSessionState ? "yes" : "no"}</p>
+          <p>Card session property present: {diagnostics.hasSessionState ? "yes" : "no"}</p>
         </div>}
         {sessionReady && <p className="mt-3 text-sm text-green-800">Session generation passed.</p>}
         {handoffStatus && <p role="status" className="mt-3 text-sm font-medium">{handoffStatus}</p>}

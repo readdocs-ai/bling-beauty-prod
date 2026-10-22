@@ -37,10 +37,13 @@ function safeProviderDiagnostics(value: unknown) {
     // Worldpay may return the schema error under an `error` object.
     providerError: data.error && typeof data.error === "object" && !Array.isArray(data.error)
       ? safeProviderCode((data.error as Record<string, unknown>).errorName) : undefined,
+    providerCode: safeProviderCode(data.code),
+    providerName: safeProviderCode(data.name),
     // Field names only, never validation descriptions or rejected values.
     validationFields: Array.isArray(data.validationErrors)
       ? data.validationErrors.slice(0, 8).map(v => v && typeof v === "object" ? safeProviderCode((v as Record<string, unknown>).field) : undefined).filter(Boolean)
       : undefined,
+    validationErrorCount: Array.isArray(data.validationErrors) ? data.validationErrors.length : undefined,
   };
 }
 

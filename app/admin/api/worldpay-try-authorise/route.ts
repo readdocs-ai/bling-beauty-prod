@@ -83,6 +83,8 @@ export async function POST(request: Request) {
         merchant: { entity }, verificationCurrency: "GBP",
       }), cache: "no-store", signal: AbortSignal.timeout(15000),
     });
+    const tokenCorrelation = tokenResponse.headers.get("WP-CorrelationId");
+    const safeTokenCorrelation = tokenCorrelation && /^[a-zA-Z0-9-]{1,100}$/.test(tokenCorrelation) ? tokenCorrelation : undefined;
     const tokenData: unknown = await tokenResponse.json().catch(() => null);
     const tokenObject = tokenData && typeof tokenData === "object" ? tokenData as Record<string, unknown> : {};
     const embedded = tokenObject._embedded && typeof tokenObject._embedded === "object" ? tokenObject._embedded as Record<string, unknown> : {};
@@ -92,9 +94,9 @@ export async function POST(request: Request) {
     const tokenLink = links["tokens:token"] && typeof links["tokens:token"] === "object" ? links["tokens:token"] as Record<string, unknown> : {};
     const tokenHref = typeof tokenLink.href === "string" ? tokenLink.href : "";
     if (!tokenResponse.ok || !isTryTokenHref(tokenHref) || (tokenObject.outcome !== "verified" && !(embedded.verification && typeof embedded.verification === "object" && (embedded.verification as Record<string, unknown>).outcome === "verified"))) {
-      return NextResponse.json({ reference, stage: "verified-token", httpStatus: tokenResponse.status,
+      return NextResponse.json({ reference, stage: "verified-token", httpStatus: tokenResponse.status, correlationId: safeTokenCorrelation,
         ...safeProviderDiagnostics(tokenObject), authorized: false, captured: false, orderCreated: false,
-        warning: "Verified token creation did not succeed. No authorisation attempted. Do not reuse sessions." },
+        warning: "Verified token creation or response validation failed. No authorisation attempted. Do not reuse sessions. Share only status, safe error fields and correlation ID." },
         { status: 502, headers });
     }
     const body = {
@@ -123,7 +125,7 @@ export async function POST(request: Request) {
     const outcome = typeof data.outcome === "string" && /^[A-Za-z ]{1,40}$/.test(data.outcome) ? data.outcome : "unconfirmed";
     const correlation = response.headers.get("WP-CorrelationId");
     return NextResponse.json({
-      reference, httpStatus: response.status, outcome, ...safeProviderDiagnostics(data),
+      reference, stage: "card-authorisation", httpStatus: response.status, outcome, ...safeProviderDiagnostics(data),
       authorized: response.status === 201 && outcome.toLowerCase() === "authorized",
       captured: false, orderCreated: false,
       correlationId: correlation && /^[a-zA-Z0-9-]{1,100}$/.test(correlation) ? correlation : undefined,

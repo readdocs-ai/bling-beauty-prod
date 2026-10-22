@@ -28,6 +28,25 @@ function isTryTokenHref(value: string): boolean {
 function safeProviderCode(value: unknown): string | undefined {
   return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/.test(value) ? value : undefined;
 }
+// Extract only known field identifiers and generic error categories from validation text.
+// Never return upstream messages: they may contain session URLs or payment data.
+function safeValidationHint(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const parts = [record.field, record.message, record.description, record.error, record.path]
+    .filter((v): v is string => typeof v === "string").join(" ").slice(0, 2000);
+  const allowed = ["paymentInstrument", "sessionHref", "merchant", "entity", "verificationCurrency", "narrative", "description", "type", "cardHolderName", "billingAddress", "cvc"];
+  const fields = allowed.filter(field => new RegExp(`\\b${field}\\b`, "i").test(parts));
+  const categories = [
+    ["missing-required", /required|missing|must be present/i],
+    ["unexpected-property", /additional propert|not allowed|unexpected|unknown field/i],
+    ["invalid-format", /format|pattern|invalid uri|invalid url/i],
+    ["invalid-type", /type|must be string|must be object/i],
+    ["invalid-value", /invalid|not valid|unsupported|does not match/i],
+  ] as const;
+  return { fields, category: categories.find(([, pattern]) => pattern.test(parts))?.[0] || "unclassified" };
+}
+
 function safeProviderDiagnostics(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const data = value as Record<string, unknown>;
@@ -44,6 +63,7 @@ function safeProviderDiagnostics(value: unknown) {
       ? data.validationErrors.slice(0, 8).map(v => v && typeof v === "object" ? safeProviderCode((v as Record<string, unknown>).field) : undefined).filter(Boolean)
       : undefined,
     validationErrorCount: Array.isArray(data.validationErrors) ? data.validationErrors.length : undefined,
+    validationHints: Array.isArray(data.validationErrors) ? data.validationErrors.slice(0, 8).map(safeValidationHint).filter(Boolean) : undefined,
   };
 }
 

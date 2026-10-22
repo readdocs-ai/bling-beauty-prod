@@ -79,18 +79,6 @@ export async function POST(request: Request) {
     if (process.env.VERCEL_ENV === "production" && worldpayEnvironment !== "live") {
       return NextResponse.json({ error: "Payments are not configured for live orders." }, { status: 503, headers: noStore });
     }
-    const reference = `BLING-${randomUUID()}`;
-    // Persist pending checkout before redirect. No customer details are sent in browser URL.
-    const { error: insertError } = await supabaseAdmin.from("bling_checkout_attempts").insert({
-      reference, status: "pending", amount_pence: amount, currency: "GBP", items: lines,
-      customer: parsed.data.customer, shipping: parsed.data.shipping,
-    });
-    if (insertError) {
-      console.error("Checkout persistence failed", insertError.code);
-      return NextResponse.json({ error: "Unable to create order. Please try later." }, { status: 503, headers: noStore });
-    }
-    const isLive = worldpayEnvironment === "live";
-    const endpoint = isLive ? "https://access.worldpay.com/payment_pages" : "https://try.access.worldpay.com/payment_pages";
     // Never derive customer-facing return URLs from the incoming Host header.
     // An explicitly configured HTTPS public origin is required in production.
     const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL;
@@ -105,6 +93,18 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json({ error: "Payment return URL is invalid." }, { status: 503, headers: noStore });
     }
+    const reference = `BLING-${randomUUID()}`;
+    // Persist pending checkout before redirect. No customer details are sent in browser URL.
+    const { error: insertError } = await supabaseAdmin.from("bling_checkout_attempts").insert({
+      reference, status: "pending", amount_pence: amount, currency: "GBP", items: lines,
+      customer: parsed.data.customer, shipping: parsed.data.shipping,
+    });
+    if (insertError) {
+      console.error("Checkout persistence failed", insertError.code);
+      return NextResponse.json({ error: "Unable to create order. Please try later." }, { status: 503, headers: noStore });
+    }
+    const isLive = worldpayEnvironment === "live";
+    const endpoint = isLive ? "https://access.worldpay.com/payment_pages" : "https://try.access.worldpay.com/payment_pages";
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {

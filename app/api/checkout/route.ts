@@ -39,7 +39,7 @@ function redirectCandidateDiagnostic(raw: unknown) {
     present: true,
     trusted: true,
     host: parsed.hostname,
-    pathShape: parsed.pathname.replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ":id").slice(0, 120),
+    pathSegments: parsed.pathname.split("/").filter(Boolean).length,
     queryKeys: [...new Set(parsed.searchParams.keys())].sort().slice(0, 12),
   };
 }
@@ -79,7 +79,18 @@ export async function POST(request: Request) {
       console.error("Checkout persistence failed", insertError.code);
       return NextResponse.json({ error: "Unable to create order. Please try later." }, { status: 503, headers: noStore });
     }
-    const isLive = process.env.WORLDPAY_ENVIRONMENT === "live";
+    // Fail closed: a missing or misspelled environment must never silently
+    // select the wrong merchant endpoint after ordering is enabled.
+    const worldpayEnvironment = process.env.WORLDPAY_ENVIRONMENT;
+    if (worldpayEnvironment !== "live" && worldpayEnvironment !== "try") {
+      await supabaseAdmin.from("bling_checkout_attempts").update({ status: "setup_failed" }).eq("reference", reference);
+      return NextResponse.json({ error: "Payment provider environment is not configured." }, { status: 503, headers: noStore });
+    }
+    if (process.env.VERCEL_ENV === "production" && worldpayEnvironment !== "live") {
+      await supabaseAdmin.from("bling_checkout_attempts").update({ status: "setup_failed" }).eq("reference", reference);
+      return NextResponse.json({ error: "Payments are not configured for live orders." }, { status: 503, headers: noStore });
+    }
+    const isLive = worldpayEnvironment === "live";
     const endpoint = isLive ? "https://access.worldpay.com/payment_pages" : "https://try.access.worldpay.com/payment_pages";
     // Never derive customer-facing return URLs from the incoming Host header.
     // An explicitly configured HTTPS public origin is required in production.

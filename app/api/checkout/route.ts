@@ -69,6 +69,16 @@ export async function POST(request: Request) {
     });
     const amount = lines.reduce((sum, line) => sum + line.lineTotalPence, 0);
     if (amount < 1 || amount > 1000000) return NextResponse.json({ error: "Invalid order amount." }, { status: 400, headers: noStore });
+    // Validate payment environment before storing any pending checkout.
+    // Fail closed: a missing or misspelled environment must never silently
+    // select the wrong merchant endpoint after ordering is enabled.
+    const worldpayEnvironment = process.env.WORLDPAY_ENVIRONMENT;
+    if (worldpayEnvironment !== "live" && worldpayEnvironment !== "try") {
+      return NextResponse.json({ error: "Payment provider environment is not configured." }, { status: 503, headers: noStore });
+    }
+    if (process.env.VERCEL_ENV === "production" && worldpayEnvironment !== "live") {
+      return NextResponse.json({ error: "Payments are not configured for live orders." }, { status: 503, headers: noStore });
+    }
     const reference = `BLING-${randomUUID()}`;
     // Persist pending checkout before redirect. No customer details are sent in browser URL.
     const { error: insertError } = await supabaseAdmin.from("bling_checkout_attempts").insert({
@@ -78,17 +88,6 @@ export async function POST(request: Request) {
     if (insertError) {
       console.error("Checkout persistence failed", insertError.code);
       return NextResponse.json({ error: "Unable to create order. Please try later." }, { status: 503, headers: noStore });
-    }
-    // Fail closed: a missing or misspelled environment must never silently
-    // select the wrong merchant endpoint after ordering is enabled.
-    const worldpayEnvironment = process.env.WORLDPAY_ENVIRONMENT;
-    if (worldpayEnvironment !== "live" && worldpayEnvironment !== "try") {
-      await supabaseAdmin.from("bling_checkout_attempts").update({ status: "setup_failed" }).eq("reference", reference);
-      return NextResponse.json({ error: "Payment provider environment is not configured." }, { status: 503, headers: noStore });
-    }
-    if (process.env.VERCEL_ENV === "production" && worldpayEnvironment !== "live") {
-      await supabaseAdmin.from("bling_checkout_attempts").update({ status: "setup_failed" }).eq("reference", reference);
-      return NextResponse.json({ error: "Payments are not configured for live orders." }, { status: 503, headers: noStore });
     }
     const isLive = worldpayEnvironment === "live";
     const endpoint = isLive ? "https://access.worldpay.com/payment_pages" : "https://try.access.worldpay.com/payment_pages";

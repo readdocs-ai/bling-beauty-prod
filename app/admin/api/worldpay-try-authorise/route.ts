@@ -27,6 +27,9 @@ function safeProviderDiagnostics(value: unknown) {
   return {
     errorName: safeProviderCode(data.errorName),
     errorCode: safeProviderCode(data.errorCode),
+    // Worldpay may return the schema error under an `error` object.
+    providerError: data.error && typeof data.error === "object" && !Array.isArray(data.error)
+      ? safeProviderCode((data.error as Record<string, unknown>).errorName) : undefined,
     // Field names only, never validation descriptions or rejected values.
     validationFields: Array.isArray(data.validationErrors)
       ? data.validationErrors.slice(0, 8).map(v => v && typeof v === "object" ? safeProviderCode((v as Record<string, unknown>).field) : undefined).filter(Boolean)
@@ -55,6 +58,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400, headers });
   if (!isTrySessionHref(parsed.data.sessionState))
     return NextResponse.json({ error: "Invalid Try card session" }, { status: 400, headers });
+  // Unique reference stays within Worldpay's documented 64-character limit.
   const reference = `BLING-TRY-${randomUUID()}`;
   const body = {
     transactionReference: reference,

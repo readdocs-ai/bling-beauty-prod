@@ -9,7 +9,10 @@ export async function verifyWorldpayPayment(reference: string, amountPence: numb
   const password = process.env.WORLDPAY_API_PASSWORD?.trim();
   const entity = process.env.WORLDPAY_ENTITY?.trim();
   if (!username || !password || !entity) throw new Error('Worldpay credentials missing');
-  const base = process.env.WORLDPAY_ENVIRONMENT === 'live' ? 'https://access.worldpay.com' : 'https://try.access.worldpay.com';
+  const environment = process.env.WORLDPAY_ENVIRONMENT;
+  if (environment !== 'live' && environment !== 'try') throw new Error('Worldpay environment not configured');
+  if (process.env.VERCEL_ENV === 'production' && environment !== 'live') throw new Error('Live payment verification is not configured');
+  const base = environment === 'live' ? 'https://access.worldpay.com' : 'https://try.access.worldpay.com';
   const response = await fetch(`${base}/paymentQueries/payments?transactionReference=${encodeURIComponent(reference)}`, {
     headers: { Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`, Accept: 'application/vnd.worldpay.payment-queries-v1.hal+json' },
     cache: 'no-store', signal: AbortSignal.timeout(15000),

@@ -102,7 +102,9 @@ export async function POST(request: Request) {
         "Content-Type": "application/vnd.worldpay.verified-tokens-v3.hal+json",
       },
       body: JSON.stringify({
-        paymentInstrument: { type: "card/checkout", sessionHref: parsed.data.cardSession },
+        // Verified Tokens v3 requires cardHolderName for card/checkout as well as sessionHref.
+        // This fixed value is ONLY for the isolated Try test; production must collect the real name.
+        paymentInstrument: { type: "card/checkout", cardHolderName: "Bling Beauty Test", sessionHref: parsed.data.cardSession },
         merchant: { entity }, verificationCurrency: "GBP",
       }), cache: "no-store", signal: AbortSignal.timeout(15000),
     });
@@ -115,7 +117,10 @@ export async function POST(request: Request) {
     const links = tokenResource._links && typeof tokenResource._links === "object" ? tokenResource._links as Record<string, unknown> :
       tokenObject._links && typeof tokenObject._links === "object" ? tokenObject._links as Record<string, unknown> : {};
     const tokenLink = links["tokens:token"] && typeof links["tokens:token"] === "object" ? links["tokens:token"] as Record<string, unknown> : {};
-    const tokenHref = typeof tokenLink.href === "string" ? tokenLink.href : "";
+    const tokenPaymentInstrument = tokenResource.tokenPaymentInstrument && typeof tokenResource.tokenPaymentInstrument === "object"
+      ? tokenResource.tokenPaymentInstrument as Record<string, unknown> : {};
+    const tokenHref = typeof tokenLink.href === "string" ? tokenLink.href
+      : typeof tokenPaymentInstrument.href === "string" ? tokenPaymentInstrument.href : "";
     if (!tokenResponse.ok || !isTryTokenHref(tokenHref) || (tokenObject.outcome !== "verified" && !(embedded.verification && typeof embedded.verification === "object" && (embedded.verification as Record<string, unknown>).outcome === "verified"))) {
       return NextResponse.json({ reference, stage: "verified-token", httpStatus: tokenResponse.status, correlationId: safeTokenCorrelation,
         ...safeProviderDiagnostics(tokenObject), authorized: false, captured: false, orderCreated: false,

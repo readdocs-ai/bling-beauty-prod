@@ -44,6 +44,16 @@ export async function POST(request: Request) {
   try {
     const response = await advanceDeviceData(claimed.action,{collectionReference});
     const progress = await record3dsContinuation(reference,attempt.payment_claim_id,claimed.continuationClaim,response);
+    if (progress.outcome === 'challenge') {
+      const challenge = response.data?.challenge;
+      const challengeReference = challenge && typeof challenge === 'object' && !Array.isArray(challenge)
+        ? (challenge as Record<string, unknown>).reference : null;
+      if (typeof challengeReference !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(challengeReference)) return fail(503);
+      const { data: registered, error: registerError } = await supabaseAdmin.rpc('bling_register_issuer_challenge', {
+        p_reference:reference, p_payment_claim:attempt.payment_claim_id, p_challenge_reference:challengeReference,
+      });
+      if (registerError || registered !== true) return fail(503);
+    }
     return NextResponse.json({status:'payment_processing',providerStage:progress.outcome,
       message:'Payment requires further verification. Do not resubmit your card.'},{status:202,headers});
   } catch {

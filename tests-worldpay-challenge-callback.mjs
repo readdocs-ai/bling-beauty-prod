@@ -1,0 +1,13 @@
+import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+const read=(p)=>readFileSync(new URL(p,import.meta.url),'utf8');
+const callback=read('./app/api/worldpay/preview-challenge-return/route.ts');
+const complete=read('./app/api/worldpay/preview-challenge-complete/route.ts');
+const device=read('./app/api/worldpay/preview-device-data/route.ts');
+const sql=read('./supabase/worldpay-challenge-return-v6.sql');
+for(const token of ['BLING_PREVIEW_3DS_CHALLENGE_CONTINUATION','bling_mark_issuer_challenge_return','TransactionId']) assert.ok(callback.includes(token),token);
+for(const token of ['claim3dsContinuation','advanceChallenge','record3dsContinuation','BLING_PREVIEW_3DS_CHALLENGE_CONTINUATION']) assert.ok(complete.includes(token),token);
+for(const token of ['bling_register_issuer_challenge','response.data?.challenge']) assert.ok(device.includes(token),token);
+for(const token of ['issuer_challenge_return_seen=true','provider_continuation_claim IS NULL','browser_secret_sha256=p_secret_sha256','GRANT EXECUTE']) assert.ok(sql.includes(token),token);
+assert.ok(!/paid_verified|settlement_verified/.test(callback));
+console.log('Issuer challenge callback source checks passed (14 assertions). No provider execution tested.');

@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {safeIntegratedAction, checkedProviderResult, assertMatchingProviderPayment,API_VERSION} from './lib/worldpay/integrated-payments-contract.mjs';
+assert.equal(API_VERSION,'2024-06-01');
+const base='https://try.access.worldpay.com/api/payments/opaque';
+assert.equal(safeIntegratedAction(base+'/3dsChallenges','challenge'),base+'/3dsChallenges');
+for(const url of ['https://evil.example/api/payments/a','http://try.access.worldpay.com/api/payments/a',base+'?x=y','https://try.access.worldpay.com/payments/events/a']) assert.throws(()=>safeIntegratedAction(url));
+assert.throws(()=>safeIntegratedAction(base+'/settlements','challenge'));
+assert.equal(checkedProviderResult(200,{outcome:'authorized'}).outcome,'authorised');
+assert.equal(checkedProviderResult(200,{outcome:'3dsChallenged'}).outcome,'uncertain');
+assert.equal(checkedProviderResult(500,{outcome:'authorized'}).outcome,'uncertain');
+assert.equal(checkedProviderResult(200,{outcome:'sentForSettlement'}).outcome,'settlement_requested');
+const provider={transactionReference:'REF',instruction:{value:{amount:1200,currency:'GBP'}}};
+assert.equal(assertMatchingProviderPayment(provider,{reference:'REF',amountPence:1200}),true);
+assert.throws(()=>assertMatchingProviderPayment(provider,{reference:'REF',amountPence:1201}));
+console.log('Integrated Payments API contract tests passed');

@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {classifyVerifiedPayment, classifyMatchingPayments} from './lib/worldpay/payment-state.mjs';
+const expectedReference='BLING-9bf44c2e-6cb8-45d5-bd19-9ad64b1c4e81';
+const expectedAmount=1234,expectedEntity='test-entity';
+const payment={transactionReference:expectedReference,entity:expectedEntity,value:{currency:'GBP',amount:1234},paymentId:'provider-id',lastEvent:'settlementSucceeded'};
+const base={payment,expectedReference,expectedAmount,expectedEntity};
+assert.equal(classifyVerifiedPayment(base).state,'paid');
+for (const lastEvent of ['authorized','authorizationRequested','sentForSettlement','captureRequested','']) assert.equal(classifyVerifiedPayment({...base,payment:{...payment,lastEvent}}).state,'pending');
+for (const lastEvent of ['refused','authorizationFailed','settlementFailed','cancelled']) assert.equal(classifyVerifiedPayment({...base,payment:{...payment,lastEvent}}).state,'failed');
+for (const changed of [{transactionReference:'other'},{entity:'other'},{value:{currency:'USD',amount:1234}},{value:{currency:'GBP',amount:1235}},{paymentId:''}]) assert.equal(classifyVerifiedPayment({...base,payment:{...payment,...changed}}).state,'uncertain');
+assert.equal(classifyMatchingPayments({payments:[],expectedReference,expectedAmount,expectedEntity}).state,'uncertain');
+assert.equal(classifyMatchingPayments({payments:[payment,payment],expectedReference,expectedAmount,expectedEntity}).state,'uncertain');
+assert.equal(classifyMatchingPayments({payments:[payment],expectedReference,expectedAmount,expectedEntity}).state,'paid');
+console.log('PASS: Worldpay strict matching, duplicates, authorisation-only, settled, failed and uncertain outcomes');

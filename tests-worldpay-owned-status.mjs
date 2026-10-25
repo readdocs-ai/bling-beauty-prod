@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const read=(p)=>readFileSync(new URL(p,import.meta.url),'utf8');
+const route=read('./app/api/worldpay/preview-attempt-status/route.ts');
+const gateway=read('./lib/worldpay/persistent-attempt.ts');
+const cart=read('./app/cart/page.tsx');
+assert.match(route,/ownershipSecret: z\.string\(\)\.regex/);
+assert.match(route,/getCheckoutAttemptStatus\(parsed\.data\.reference, parsed\.data\.ownershipSecret\)/);
+assert.match(gateway,/timingSafeEqual\(expected, actual\)/);
+assert.match(gateway,/browser_secret_sha256/);
+assert.match(cart,/ownershipSecret:previewOwnershipSecret/);
+assert.match(cart,/setPreviewOwnershipSecret\(result\.ownershipSecret\)/);
+console.log('Owned preview status source checks passed (6 assertions)');

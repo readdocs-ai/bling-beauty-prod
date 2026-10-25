@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import WorldpayPreviewFields from "@/components/worldpay/preview-fields";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/components/cart/cart-context";
@@ -17,6 +18,10 @@ export default function CartPage() {
   const [shipping, setShipping] = useState({ address1: "", address2: "", city: "", postcode: "", country: "GB" as const });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [previewReference, setPreviewReference] = useState("");
+  const [previewOwnershipSecret, setPreviewOwnershipSecret] = useState("");
+  const [previewCheckoutId, setPreviewCheckoutId] = useState("");
+  const [previewStatus, setPreviewStatus] = useState("");
   // A browser may restore this page from its back/forward cache after payment.
   // The old pending state must not leave checkout permanently disabled.
   useEffect(() => {
@@ -33,13 +38,28 @@ export default function CartPage() {
     try {
       const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: items.map(i => ({ slug: i.slug, quantity: i.qty })), customer, shipping }) });
       const result = await response.json();
-      if (!response.ok || !result.redirectUrl) throw new Error(result.error || "Unable to start payment");
-      // Same-tab navigation avoids an orphaned cart tab showing "Connecting".
-      // Worldpay owns the destination; server-side code validates its hostname.
-      window.location.assign(result.redirectUrl);
+      if (!response.ok || !result.reference) throw new Error(result.error || "Unable to start checkout");
+      if (typeof result.ownershipSecret !== "string" || !/^[a-f0-9]{64}$/.test(result.ownershipSecret)) throw new Error("Checkout verification unavailable");
+      setPreviewOwnershipSecret(result.ownershipSecret);
+      setPreviewReference(result.reference);
+      setPreviewCheckoutId(result.checkoutId || "");
+      setPreviewStatus("Pending — no payment has been attempted.");
     } catch (e) { setError(e instanceof Error ? e.message : "Checkout unavailable"); setBusy(false); }
   }
 
+
+  async function checkPreviewStatus() {
+    if (!previewReference || !previewOwnershipSecret) return;
+    try {
+      const response = await fetch('/api/worldpay/preview-attempt-status', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({reference:previewReference,ownershipSecret:previewOwnershipSecret}), cache:'no-store'
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error('Status unavailable');
+      setPreviewStatus(`Order: ${result.status}. Worldpay: ${result.providerStage || 'not started'}.`);
+    } catch { setPreviewStatus('Unable to verify status. Do not resubmit payment.'); }
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
@@ -99,8 +119,14 @@ export default function CartPage() {
                 <Input required placeholder="Town or city" autoComplete="address-level2" value={shipping.city} onChange={e => setShipping({ ...shipping, city: e.target.value })} />
                 <Input required placeholder="UK postcode" autoComplete="postal-code" value={shipping.postcode} onChange={e => setShipping({ ...shipping, postcode: e.target.value })} />
                 {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-                <Button disabled={busy} className="w-full justify-center">{busy ? "Connecting to Worldpay…" : "Proceed to secure payment"}</Button>
+                <Button disabled={busy || Boolean(previewReference)} className="w-full justify-center">{busy ? "Preparing…" : "Prepare Preview secure card fields"}</Button>
               </form>
+              {previewReference && <WorldpayPreviewFields reference={previewReference} checkoutId={previewCheckoutId} />}
+              {previewReference && <div className="rounded-xl border p-3 text-sm" role="status">
+                <p>{previewStatus}</p>
+                <Button variant="ghost" onClick={() => void checkPreviewStatus()} className="mt-2 w-full justify-center">Check Preview attempt status</Button>
+                <p className="mt-2 text-xs">Diagnostic only: this does not charge a card or confirm a paid order.</p>
+              </div>}
               <ButtonLink href="/shop" variant="ghost" className="w-full justify-center">Continue browsing</ButtonLink>
               <Button variant="ghost" onClick={clear} className="w-full justify-center">Clear cart</Button>
             </div>

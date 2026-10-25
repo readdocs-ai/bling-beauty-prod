@@ -2,7 +2,7 @@
  * This module stores validated provider progress but NEVER initiates a charge.
  */
 import 'server-only';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash, timingSafeEqual } from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { checkedProviderResult } from './integrated-payments-contract.mjs';
 
@@ -42,11 +42,15 @@ export async function storeVerifiedProviderProgress(reference: string, claim: st
   return { outcome, actions };
 }
 
-export async function getCheckoutAttemptStatus(reference: string) {
-  if (!REFERENCE.test(reference)) return null;
+export async function getCheckoutAttemptStatus(reference: string, ownershipSecret: string) {
+  if (!REFERENCE.test(reference) || !/^[a-f0-9]{64}$/.test(ownershipSecret)) return null;
   const { data, error } = await supabaseAdmin.from('bling_checkout_attempts')
-    .select('status,provider_outcome').eq('reference',reference).maybeSingle();
-  if (error || !data) return null;
+    .select('status,provider_outcome,browser_secret_sha256').eq('reference',reference).maybeSingle();
+  if (error || !data || typeof data.browser_secret_sha256 !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(data.browser_secret_sha256)) return null;
+  const expected = Buffer.from(data.browser_secret_sha256, 'hex');
+  const actual = createHash('sha256').update(ownershipSecret).digest();
+  if (!timingSafeEqual(expected, actual)) return null;
   // No PII, provider action URLs, claim IDs, or payment IDs leave this function.
   return {
     status: ['pending','payment_processing','settlement_verified','paid_verified'].includes(data.status)

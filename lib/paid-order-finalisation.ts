@@ -11,12 +11,27 @@ type Order = {
  items:{name:string;quantity:number;unitPence:number}[];
 };
 
+/** Only independently verified settlement already recorded by the privileged database
+ * may be finalised. Payment Queries results are progress, not settlement proof.
+ * An external reconciliation operator must first verify evidence and execute
+ * bling_record_verified_settlement with the stored payment claim.
+ */
 export async function finalisePayment(reference:string) {
- const {data:attempt,error} = await supabaseAdmin.from('bling_checkout_attempts').select('reference,amount_pence,status').eq('reference',reference).single();
- if(error || !attempt || !['pending','redirected','paid_verified'].includes(attempt.status)) throw new Error('Checkout not found');
- const verification = await verifyWorldpayPayment(reference,attempt.amount_pence);
- if(verification.state !== 'paid' || !verification.paymentId) return {state:verification.state};
- const {data:id,error:rpcError} = await supabaseAdmin.rpc('bling_finalise_verified_payment',{p_reference:reference,p_payment_id:verification.paymentId});
+ if(!/^BLING-[0-9a-f-]{36}$/.test(reference)) throw new Error('Invalid reference');
+ const {data:attempt,error}=await supabaseAdmin.from('bling_checkout_attempts')
+  .select('reference,amount_pence,status,provider_payment_id,provider_last_event,payment_verified_at')
+  .eq('reference',reference).single();
+ if(error || !attempt) throw new Error('Checkout unavailable');
+ if(attempt.status !== 'settlement_verified' && attempt.status !== 'paid_verified') {
+   // Lookup can aid operator investigation, but MUST NOT create paid orders.
+   const check=await verifyWorldpayPayment(reference,attempt.amount_pence);
+   return {state: check.state === 'failed' ? 'failed' as const : 'pending' as const};
+ }
+ if(attempt.provider_last_event !== 'settled' || !attempt.payment_verified_at ||
+    typeof attempt.provider_payment_id !== 'string' || attempt.provider_payment_id.length < 3)
+   throw new Error('Missing verified settlement evidence');
+ const {data:id,error:rpcError}=await supabaseAdmin.rpc('bling_finalise_verified_payment',
+   {p_reference:reference,p_payment_id:attempt.provider_payment_id});
  if(rpcError || typeof id !== 'string') throw new Error('Unable to persist verified payment');
  return {state:'paid' as const,orderId:id};
 }

@@ -34,18 +34,25 @@ export default function CartPage() {
     };
   }, []);
   async function checkout() {
+    // An already-prepared checkout must never create a second pending attempt.
+    if (busy || previewReference) return;
     setBusy(true); setError("");
     try {
       const response = await fetch("/api/worldpay/preview-prepare", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: items.map(i => ({ slug: i.slug, quantity: i.qty })), customer, shipping }) });
       const result = await response.json();
       if (!response.ok || !result.reference) throw new Error(result.error || "Unable to start checkout");
       if (typeof result.ownershipSecret !== "string" || !/^[a-f0-9]{64}$/.test(result.ownershipSecret)) throw new Error("Checkout verification unavailable");
-      setPreviewOwnershipSecret(result.ownershipSecret);
-      setPreviewReference(result.reference);
       if (typeof result.checkoutId !== "string" || !result.checkoutId) throw new Error("Worldpay secure fields are not configured");
+      // Set the reference last, only after all data needed to render the fields is validated.
+      setPreviewOwnershipSecret(result.ownershipSecret);
       setPreviewCheckoutId(result.checkoutId);
+      setPreviewReference(result.reference);
       setPreviewStatus("Pending — no payment has been attempted.");
-    } catch (e) { setError(e instanceof Error ? e.message : "Checkout unavailable"); setBusy(false); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Checkout unavailable");
+    } finally {
+      setBusy(false);
+    }
   }
 
 
@@ -120,7 +127,7 @@ export default function CartPage() {
                 <Input required placeholder="Town or city" autoComplete="address-level2" value={shipping.city} onChange={e => setShipping({ ...shipping, city: e.target.value })} />
                 <Input required placeholder="UK postcode" autoComplete="postal-code" value={shipping.postcode} onChange={e => setShipping({ ...shipping, postcode: e.target.value })} />
                 {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-                <Button disabled={busy || Boolean(previewReference)} className="w-full justify-center">{busy ? "Preparing…" : "Prepare Preview secure card fields"}</Button>
+                <Button disabled={busy || Boolean(previewReference)} className="w-full justify-center">{busy ? "Preparing…" : previewReference ? "Preview checkout prepared" : "Prepare Preview secure card fields"}</Button>
               </form>
               {previewReference && <WorldpayPreviewFields reference={previewReference} checkoutId={previewCheckoutId} ownershipSecret={previewOwnershipSecret} />}
               {previewReference && <div className="rounded-xl border p-3 text-sm" role="status">

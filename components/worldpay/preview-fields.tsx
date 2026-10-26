@@ -180,6 +180,6 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
     </form>
     {deviceData ? <WorldpayDeviceData deviceData={deviceData} onComplete={collectionReference => void continueDevice(collectionReference)} /> : null}
     {challenge ? <IssuerChallenge challenge={challenge} onReturn={() => void continueChallenge()} /> : null}
-    <p className="mt-3 text-sm text-amber-900">Preview only, pending order {reference.slice(0, 14)}… TEST CARDS ONLY. This action can initiate a Worldpay Try payment when enabled by the server. It does not confirm an order as paid. Do not enter a real card or submit twice.</p>
+    <p className="mt-3 break-words text-sm text-amber-900">Preview only, pending order {reference}. TEST CARDS ONLY. This action can initiate a Worldpay Try payment when enabled by the server. It does not confirm an order as paid. Do not enter a real card or submit twice.</p>
   </section>;
 }

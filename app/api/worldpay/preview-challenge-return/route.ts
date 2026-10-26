@@ -1,6 +1,6 @@
 /** Issuer iframe return receiver. An unauthenticated callback is NEVER proof of 3DS success. */
-import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { readIssuerReturn } from '@/lib/worldpay/issuer-return.mjs';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const headers = {'Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; frame-ancestors 'self'; script-src 'unsafe-inline'"};
@@ -10,11 +10,13 @@ function html(message: string, status: number) {
 export async function POST(request:Request) {
   if (process.env.VERCEL_ENV !== 'preview' || process.env.WORLDPAY_ENVIRONMENT !== 'try' ||
       process.env.BLING_PREVIEW_3DS_CHALLENGE_CONTINUATION !== 'true') return html('Authentication return is unavailable.',404);
-  if (Number(request.headers.get('content-length') || '0') > 2048) return html('Invalid authentication return.',413);
-  const form = await request.formData().catch(() => null);
-  if (!form || [...form.keys()].some(k => !['TransactionId','MD'].includes(k))) return html('Invalid authentication return.',400);
-  const id = form.get('TransactionId');
-  if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(id)) return html('Invalid authentication return.',400);
+  const result = await readIssuerReturn(request);
+  if (!result.ok) {
+    console.warn('Worldpay issuer return rejected',{reason:result.reason,...result.diagnostic});
+    return html('Invalid authentication return.',result.status);
+  }
+  const {id} = result;
+  console.info('Worldpay issuer return received',result.diagnostic);
   // TransactionId may be user-supplied. This only records that a matching callback was seen.
   // It MUST NOT set an order paid, approved, or authenticated.
   const {data,error} = await supabaseAdmin.rpc('bling_mark_issuer_challenge_return',{p_challenge_reference:id});

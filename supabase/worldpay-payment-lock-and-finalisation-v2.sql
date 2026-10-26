@@ -24,6 +24,10 @@ END $$;
 REVOKE ALL ON FUNCTION public.bling_claim_payment(text,uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.bling_claim_payment(text,uuid) TO service_role;
 
+-- Only a provider-verified SETTLED event may advance an attempt.
+-- 'sentForSettlement' / 'settlement_requested' is NOT final settlement proof.
+-- Only a provider-verified SETTLED event may advance an attempt.
+-- 'sentForSettlement' / 'settlement_requested' is NOT final settlement proof.
 -- Record a verified state only through a privileged server workflow after
 -- checking Worldpay response/query against reference, amount and currency.
 -- Never call from browser input or an untrusted webhook without verification.
@@ -33,7 +37,7 @@ RETURNS boolean LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
 DECLARE affected integer;
 BEGIN
  IF p_payment_id IS NULL OR length(trim(p_payment_id)) < 3 OR
-    p_event NOT IN ('settlement_requested','settled') THEN
+    p_event <> 'settled' THEN
   RAISE EXCEPTION 'Unverified payment state';
  END IF;
  UPDATE public.bling_checkout_attempts
@@ -58,7 +62,7 @@ BEGIN
  SELECT * INTO a FROM public.bling_checkout_attempts WHERE reference=p_reference FOR UPDATE;
  IF NOT FOUND OR a.status NOT IN ('settlement_verified','paid_verified') OR
     a.payment_verified_at IS NULL OR a.provider_payment_id IS DISTINCT FROM p_payment_id OR
-    a.provider_last_event NOT IN ('settlement_requested','settled') THEN
+    a.provider_last_event <> 'settled' THEN
   RAISE EXCEPTION 'Payment not independently verified';
  END IF;
  INSERT INTO public.bling_paid_orders(reference,provider_payment_id,amount_pence,currency,items,customer,shipping)

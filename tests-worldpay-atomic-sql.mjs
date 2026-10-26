@@ -4,7 +4,7 @@ const s=readFileSync(new URL('./supabase/worldpay-payment-lock-and-finalisation-
 for(const required of [
  'bling_claim_payment','status=\'pending\' AND payment_claim_id IS NULL',
  "status='payment_processing'",'payment_claim_id=p_claim',
- "p_event NOT IN ('settlement_requested','settled')",
+ "p_event <> 'settled'",
  "status='settlement_verified'",'payment_verified_at IS NULL',
  'a.provider_payment_id IS DISTINCT FROM p_payment_id',
  'FOR UPDATE','ON CONFLICT (reference) DO NOTHING',

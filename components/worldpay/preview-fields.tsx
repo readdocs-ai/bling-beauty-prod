@@ -11,8 +11,8 @@ type WPWindow = Window & { Worldpay?: { checkout?: { init: (
   config: unknown, callback: (error: unknown, checkout?: Checkout) => void
 ) => void } } };
 
-/** Diagnostic only. Neither sessions nor raw card data are transmitted, stored, or logged. */
-export default function WorldpayPreviewFields({ reference, checkoutId }: { reference: string; checkoutId: string }) {
+/** Preview-only, one-shot Try payment initiation; card session sent only to our guarded server endpoint. */
+export default function WorldpayPreviewFields({ reference, checkoutId, ownershipSecret }: { reference: string; checkoutId: string; ownershipSecret: string }) {
   const [loaded, setLoaded] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -57,19 +57,35 @@ export default function WorldpayPreviewFields({ reference, checkoutId }: { refer
     if (busyRef.current || !ready || !instance.current?.generateSessions) return;
     busyRef.current = true;
     setBusy(true);
-    setStatus("Requesting disposable sessions from Worldpay Try…");
+    setStatus("Requesting a disposable card session from Worldpay Try…");
     try {
-      instance.current.generateSessions((error, sessions) => {
+      instance.current.generateSessions(async (error, sessions) => {
         if (!mountedRef.current) return;
-        busyRef.current = false;
-        setBusy(false);
-        // Do not inspect, print, send or persist the encrypted session payloads.
-        // In particular they must NOT be passed to a payment endpoint in this diagnostic.
-        if (error || !sessions?.card || !sessions?.cvv) {
-          setStatus("Session generation failed. Check the test card fields and Worldpay configuration.");
+        if (error || typeof sessions?.card !== "string" || !sessions.card) {
+          busyRef.current = false;
+          setBusy(false);
+          setStatus("Session generation failed. No payment has been attempted.");
           return;
         }
-        setStatus("Worldpay Try confirmed card and CVC session generation. No payment was attempted. The disposable sessions were discarded.");
+        // Treat the session as a one-time credential. Never log or persist it.
+        // No auto-retry, even after a network error: Worldpay might have processed the request.
+        try {
+          const response = await fetch("/api/worldpay/preview-initiate", {
+            method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reference, ownershipSecret, sessionHref: sessions.card }),
+          });
+          const result: { message?: string; error?: string; providerStage?: string } = await response.json().catch(() => ({}));
+          if (mountedRef.current) setStatus(response.ok
+            ? (result.message || "Worldpay has received the test attempt. Verify its status before proceeding.")
+            : (response.status === 503 && result.error === "Preview payment initiation is disabled"
+              ? "Worldpay Try initiation is disabled. No payment request was sent."
+              : "Payment outcome is not confirmed. Do not try again; check the attempt status."));
+        } catch {
+          if (mountedRef.current) setStatus("Unable to confirm Worldpay's response. Do not retry this payment.");
+        } finally {
+          busyRef.current = false;
+          if (mountedRef.current) setBusy(false);
+        }
       });
     } catch {
       busyRef.current = false;
@@ -88,9 +104,9 @@ export default function WorldpayPreviewFields({ reference, checkoutId }: { refer
       <label className="mt-3 block text-sm">Expiry<div id="bling-preview-expiry" className="h-12 rounded border p-2" /></label>
       <label className="mt-3 block text-sm">CVC<div id="bling-preview-cvv" className="h-12 rounded border p-2" /></label>
       <button className="mt-4 rounded border px-4 py-2 disabled:opacity-50" type="submit" disabled={!ready || busy}>
-        {busy ? "Checking sessions…" : "Test secure sessions (no charge)"}
+        {busy ? "Checking sessions…" : "Submit Worldpay Try test payment"}
       </button>
     </form>
-    <p className="mt-3 text-sm text-amber-900">Preview only, pending order {reference.slice(0, 14)}… Use test cards only. No authorisation, 3D Secure or settlement takes place here. Do not enter a real card.</p>
+    <p className="mt-3 text-sm text-amber-900">Preview only, pending order {reference.slice(0, 14)}… TEST CARDS ONLY. This action can initiate a Worldpay Try payment when enabled by the server. It does not confirm an order as paid. Do not enter a real card or submit twice.</p>
   </section>;
 }

@@ -122,11 +122,11 @@ export default function CartPage() {
                 {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
                 <Button disabled={busy || Boolean(previewReference)} className="w-full justify-center">{busy ? "Preparing…" : "Prepare Preview secure card fields"}</Button>
               </form>
-              {previewReference && <WorldpayPreviewFields reference={previewReference} checkoutId={previewCheckoutId} />}
+              {previewReference && <WorldpayPreviewFields reference={previewReference} checkoutId={previewCheckoutId} ownershipSecret={previewOwnershipSecret} />}
               {previewReference && <div className="rounded-xl border p-3 text-sm" role="status">
                 <p>{previewStatus}</p>
                 <Button variant="ghost" onClick={() => void checkPreviewStatus()} className="mt-2 w-full justify-center">Check Preview attempt status</Button>
-                <p className="mt-2 text-xs">Diagnostic only: this does not charge a card or confirm a paid order.</p>
+                <p className="mt-2 text-xs">Preview only: payment attempts may be submitted to Worldpay Try when explicitly enabled. Never enter a real card. A submitted payment is not a paid order.</p>
               </div>}
               <ButtonLink href="/shop" variant="ghost" className="w-full justify-center">Continue browsing</ButtonLink>
               <Button variant="ghost" onClick={clear} className="w-full justify-center">Clear cart</Button>

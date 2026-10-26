@@ -4,7 +4,7 @@
  */
 import 'server-only';
 import { accessConfiguration } from './access-client';
-import { API_VERSION, safeIntegratedAction, checkedProviderResult } from './integrated-payments-contract.mjs';
+import { API_VERSION, safeIntegratedAction, checkedProviderResult, checkedProviderQueryResult } from './integrated-payments-contract.mjs';
 
 type ProviderResponse = { httpStatus: number; outcome: string; actions: Record<string,string>; data: Record<string, unknown>; correlationId: string | null };
 
@@ -24,7 +24,7 @@ async function request(method: 'POST'|'GET', href: string, payload?: object): Pr
   });
   const raw: unknown = await response.json().catch(() => null);
   const data = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string,unknown> : {};
-  const checked = checkedProviderResult(response.status, data);
+  const checked = method === 'GET' ? checkedProviderQueryResult(response.status, data) : checkedProviderResult(response.status, data);
   // Unknown errors and timeouts are uncertain, NEVER automatically retried.
   return { httpStatus: response.status, outcome: checked.outcome,
     actions: checked.actions, data, correlationId: response.headers.get('WP-CorrelationId') };

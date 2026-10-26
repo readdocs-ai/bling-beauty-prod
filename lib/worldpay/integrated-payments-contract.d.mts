@@ -34,3 +34,10 @@ export function assertMatchingProviderPayment(
     amountPence: number;
   }
 ): boolean;
+export function checkedProviderQueryResult(
+  status: number,
+  raw: unknown
+): {
+  outcome: string;
+  actions: WorldpayActions;
+};

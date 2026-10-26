@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-const headers = {'Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; frame-ancestors 'self'"};
+const headers = {'Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; frame-ancestors 'self'; script-src 'unsafe-inline'"};
 function html(message: string, status: number) {
   return new Response(`<!doctype html><html><head><meta charset="utf-8"><title>Bank authentication</title></head><body><p>${message}</p></body></html>`, {status, headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
 }
@@ -19,6 +19,6 @@ export async function POST(request:Request) {
   // It MUST NOT set an order paid, approved, or authenticated.
   const {data,error} = await supabaseAdmin.rpc('bling_mark_issuer_challenge_return',{p_challenge_reference:id});
   if (error || data !== true) return html('Unable to confirm the authentication return. Contact support.',409);
-  return html('Bank verification screen finished. Return to checkout to check payment status. Payment is not yet confirmed.',200);
+  return new Response(`<!doctype html><html><head><meta charset="utf-8"><title>Bank authentication</title></head><body><p>Bank verification screen finished. Payment is not yet confirmed.</p><script>if(window.parent!==window){window.parent.postMessage({type:'bling-worldpay-issuer-return'},window.location.origin)}</script></body></html>`,{status:200,headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
 }
 export async function GET(){return html('This endpoint accepts only bank authentication returns.',405);}

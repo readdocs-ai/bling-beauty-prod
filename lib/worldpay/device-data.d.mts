@@ -1,1 +1,1 @@
-export function parseDeviceData(value: unknown): { url: string; jwt: string } | null;
+export function parseDeviceData(value: unknown): { url: string; jwt: string; bin: string } | null;

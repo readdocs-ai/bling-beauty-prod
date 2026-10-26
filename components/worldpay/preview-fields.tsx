@@ -1,5 +1,7 @@
 "use client";
 import Script from "next/script";
+import WorldpayDeviceData from "./device-data";
+import IssuerChallenge from "./issuer-challenge";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Sessions = { card?: unknown; cvv?: unknown };
@@ -16,6 +18,8 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
   const [loaded, setLoaded] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [deviceData, setDeviceData] = useState<unknown>(null);
+  const [challenge, setChallenge] = useState<unknown>(null);
   const [status, setStatus] = useState("Waiting for secure Worldpay fields…");
   const instance = useRef<Checkout | null>(null);
   const busyRef = useRef(false);
@@ -72,9 +76,14 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
         try {
           const response = await fetch("/api/worldpay/preview-initiate", {
             method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reference, ownershipSecret, sessionHref: sessions.card }),
+            body: JSON.stringify({ reference, ownershipSecret, sessionHref: sessions.card,
+              browser: { userAgent: navigator.userAgent, language: navigator.language,
+                width: window.screen.width, height: window.screen.height,
+                timeZone: new Date().getTimezoneOffset() } }),
           });
-          const result: { message?: string; error?: string; providerStage?: string } = await response.json().catch(() => ({}));
+          const result: { message?: string; error?: string; providerStage?: string; deviceData?: unknown } = await response.json().catch(() => ({}));
+          if (mountedRef.current && response.ok && result.providerStage === 'device_data' && result.deviceData)
+            setDeviceData(result.deviceData);
           if (mountedRef.current) setStatus(response.ok
             ? (result.message || "Worldpay has received the test attempt. Verify its status before proceeding.")
             : (response.status === 503 && result.error === "Preview payment initiation is disabled"
@@ -94,6 +103,26 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
     }
   }
 
+  async function continueDevice(collectionReference: string) {
+    const response = await fetch('/api/worldpay/preview-device-data', {
+      method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',
+      body: JSON.stringify({reference,ownershipSecret,collectionReference}),
+    });
+    const result: {providerStage?:string; challenge?:unknown} = await response.json().catch(()=>({}));
+    setDeviceData(null);
+    if (response.ok && result.providerStage === 'challenge' && result.challenge) setChallenge(result.challenge);
+    setStatus(response.ok ? 'Worldpay authentication progressed. Payment is not confirmed.' :
+      'Authentication status is unresolved. Do not retry payment.');
+  }
+  async function continueChallenge() {
+    const response = await fetch('/api/worldpay/preview-challenge-complete', {
+      method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',
+      body:JSON.stringify({reference,ownershipSecret}),
+    });
+    setChallenge(null);
+    setStatus(response.ok ? 'Bank authentication submitted for verification. Payment is not confirmed.' :
+      'Bank verification unresolved. Do not retry payment.');
+  }
   return <section className="rounded-xl border border-amber-400 p-4">
     <Script src="https://try.access.worldpay.com/access-checkout/v2/checkout.js" strategy="afterInteractive"
       onLoad={() => setLoaded(true)} onError={() => setStatus("Worldpay SDK could not load.")} />
@@ -107,6 +136,8 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
         {busy ? "Checking sessions…" : "Submit Worldpay Try test payment"}
       </button>
     </form>
+    {deviceData ? <WorldpayDeviceData deviceData={deviceData} onComplete={collectionReference => void continueDevice(collectionReference)} /> : null}
+    {challenge ? <IssuerChallenge challenge={challenge} onReturn={() => void continueChallenge()} /> : null}
     <p className="mt-3 text-sm text-amber-900">Preview only, pending order {reference.slice(0, 14)}… TEST CARDS ONLY. This action can initiate a Worldpay Try payment when enabled by the server. It does not confirm an order as paid. Do not enter a real card or submit twice.</p>
   </section>;
 }

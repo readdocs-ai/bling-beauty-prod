@@ -5,7 +5,7 @@ import { parseIssuerChallenge } from "@/lib/worldpay/issuer-challenge.mjs";
 /** Render Worldpay-supplied issuer challenge; NEVER infer payment success from iframe events.
  * Parent server coordinator must verify challenge completion with Worldpay.
  */
-export default function IssuerChallenge({ challenge }: { challenge: unknown }) {
+export default function IssuerChallenge({ challenge, onReturn }: { challenge: unknown; onReturn: () => void }) {
   const validated = parseIssuerChallenge(challenge);
   const form = useRef<HTMLFormElement>(null);
   const [started, setStarted] = useState(false);
@@ -15,6 +15,17 @@ export default function IssuerChallenge({ challenge }: { challenge: unknown }) {
       form.current.submit();
     }
   }, [validated?.url, validated?.jwt, validated?.reference, started]);
+  useEffect(() => {
+    if (!validated) return;
+    const listener=(event: MessageEvent) => {
+      if (event.origin!==window.location.origin ||
+          event.source!==document.querySelector<HTMLIFrameElement>('iframe[name=bling-issuer-challenge-frame]')?.contentWindow ||
+          !event.data || event.data.type!=='bling-worldpay-issuer-return') return;
+      onReturn();
+    };
+    window.addEventListener('message',listener);
+    return ()=>window.removeEventListener('message',listener);
+  },[validated?.reference,onReturn]);
   if (!validated) return <p role="alert">Bank authentication could not be displayed safely. No payment has been confirmed.</p>;
   return <section aria-label="Bank authentication">
     <h3 className="font-semibold">Verify with your bank</h3>

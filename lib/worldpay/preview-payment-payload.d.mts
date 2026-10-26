@@ -4,9 +4,9 @@ export interface PreviewClaimedOrder {
   currency: string;
   amount_pence: number;
 }
-export function buildTryPaymentPayload(order: PreviewClaimedOrder, sessionHref: string, entity: string, narrative: string): {
+export function buildTryPaymentPayload(order: PreviewClaimedOrder, sessionHref: string, entity: string, narrative: string, threeDS: { returnUrl: string; userAgent: string; language: string; width: number; height: number; timeZone: number }): {
   transactionReference: string;
   merchant: { entity: string };
   channel: 'ecom';
-  instruction: { method: 'card'; paymentInstrument: { type: 'checkout'; sessionHref: string }; narrative: { line1: string }; value: { currency: 'GBP'; amount: number } };
+  instruction: { method: 'card'; threeDS: object; paymentInstrument: { type: 'checkout'; sessionHref: string }; narrative: { line1: string }; value: { currency: 'GBP'; amount: number } };
 };

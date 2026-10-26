@@ -55,6 +55,7 @@ export async function POST(request: Request) {
       if (registerError || registered !== true) return fail(503);
     }
     return NextResponse.json({status:'payment_processing',providerStage:progress.outcome,
+      ...(progress.outcome === 'challenge' && response.data.challenge && typeof response.data.challenge === 'object' ? {challenge:response.data.challenge} : {}),
       message:'Payment requires further verification. Do not resubmit your card.'},{status:202,headers});
   } catch {
     // A failed Worldpay request is ambiguous. Leave the continuation claimed for reconciliation.

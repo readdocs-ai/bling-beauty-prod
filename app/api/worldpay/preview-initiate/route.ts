@@ -14,6 +14,7 @@ const noStore = { 'Cache-Control': 'no-store' };
 const bodySchema = z.object({
   reference: z.string().regex(/^BLING-[0-9a-f-]{36}$/),
   ownershipSecret: z.string().regex(/^[a-f0-9]{64}$/),
+  browser: z.object({userAgent:z.string().min(3).max(512), language:z.string().min(2).max(35),width:z.number().int().min(1).max(20000),height:z.number().int().min(1).max(20000),timeZone:z.number().int().min(-840).max(840)}).strict(),
   sessionHref: z.string().max(1000).regex(/^https:\/\/try\.access\.worldpay\.com\/sessions\/[A-Za-z0-9%._~+\-]+$/),
 }).strict();
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status, headers: noStore });
@@ -26,7 +27,11 @@ export async function POST(request: Request) {
   }
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail('Invalid payment request', 400);
-  const { reference, ownershipSecret, sessionHref } = parsed.data;
+  const { reference, ownershipSecret, sessionHref, browser } = parsed.data;
+  // Never accept return URLs from the browser. Only the current Vercel Preview hostname.
+  const host = process.env.VERCEL_URL;
+  if (!host || !/^[a-z0-9-]+\.vercel\.app$/.test(host)) return fail('Preview return URL unavailable',503);
+  const threeDS = {...browser,returnUrl:`https://${host}/api/worldpay/preview-challenge-return`};
   const entity = process.env.WORLDPAY_ENTITY;
   const narrative = process.env.WORLDPAY_STATEMENT_NARRATIVE;
   if (!entity || !narrative || !process.env.WORLDPAY_API_USERNAME || !process.env.WORLDPAY_API_PASSWORD) {
@@ -36,7 +41,7 @@ export async function POST(request: Request) {
   try {
     // Validate the merchant configuration and session before taking the irreversible database claim.
     // The final payload is rebuilt from the claimed database row below.
-    buildTryPaymentPayload({reference,status:'payment_processing',currency:'GBP',amount_pence:1},sessionHref,entity,narrative);
+    buildTryPaymentPayload({reference,status:'payment_processing',currency:'GBP',amount_pence:1},sessionHref,entity,narrative,threeDS);
     owned = await claimOwnedPreviewAttempt(reference, ownershipSecret);
   } catch (e) {
     console.error('Worldpay attempt claim unavailable', e instanceof Error ? e.name : 'unknown');
@@ -46,14 +51,16 @@ export async function POST(request: Request) {
 
   // The claim is irreversible without manual provider reconciliation; never retry on error.
   try {
-    const payload = buildTryPaymentPayload(owned.attempt,sessionHref,entity,narrative);
+    const payload = buildTryPaymentPayload(owned.attempt,sessionHref,entity,narrative,threeDS);
     const response = await createIntegratedPayment(payload);
     const recorded = await storeVerifiedProviderProgress(reference,owned.claim,response);
     return NextResponse.json({
       reference,
       status: 'payment_processing',
       providerStage: recorded.outcome,
-      // Action URLs stay in the service-role database, not in this response.
+      // Only browser-facing DDC parameters are returned, never server action URLs.
+      ...(recorded.outcome === 'device_data' && response.data.deviceDataCollection && typeof response.data.deviceDataCollection === 'object'
+        ? {deviceData: response.data.deviceDataCollection} : {}),
       message: recorded.outcome === 'declined' ? 'Payment was declined.' :
         recorded.outcome === 'uncertain' ? 'Payment status needs manual verification. Do not retry.' :
         'Payment initiated. Further authentication or settlement is required; do not retry.',

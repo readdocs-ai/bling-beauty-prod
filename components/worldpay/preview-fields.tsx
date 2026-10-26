@@ -4,10 +4,9 @@ import WorldpayDeviceData from "./device-data";
 import IssuerChallenge from "./issuer-challenge";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type Sessions = { card?: unknown; cvv?: unknown };
 type Checkout = {
   remove?: () => void;
-  generateSessions?: (callback: (error: unknown, sessions?: Sessions) => void) => void;
+  generateSessionState?: (callback: (error: unknown, sessionState?: string) => void) => void;
 };
 type WPWindow = Window & { Worldpay?: { checkout?: { init: (
   config: unknown, callback: (error: unknown, checkout?: Checkout) => void
@@ -58,14 +57,14 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
   }, [init]);
 
   function testSessions() {
-    if (busyRef.current || !ready || !instance.current?.generateSessions) return;
+    if (busyRef.current || !ready || !instance.current?.generateSessionState) return;
     busyRef.current = true;
     setBusy(true);
     setStatus("Requesting a disposable card session from Worldpay Try…");
     try {
-      instance.current.generateSessions(async (error, sessions) => {
+      instance.current.generateSessionState(async (error, sessionState) => {
         if (!mountedRef.current) return;
-        if (error || typeof sessions?.card !== "string" || !sessions.card) {
+        if (error || typeof sessionState !== "string" || !sessionState) {
           busyRef.current = false;
           setBusy(false);
           setStatus("Session generation failed. No payment has been attempted.");
@@ -76,7 +75,7 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
         try {
           const response = await fetch("/api/worldpay/preview-initiate", {
             method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reference, ownershipSecret, sessionHref: sessions.card,
+            body: JSON.stringify({ reference, ownershipSecret, sessionHref: sessionState,
               browser: { userAgent: navigator.userAgent, language: navigator.language,
                 width: window.screen.width, height: window.screen.height,
                 timeZone: new Date().getTimezoneOffset() } }),

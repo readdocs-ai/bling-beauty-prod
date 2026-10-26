@@ -36,13 +36,14 @@ export default function CartPage() {
   async function checkout() {
     setBusy(true); setError("");
     try {
-      const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: items.map(i => ({ slug: i.slug, quantity: i.qty })), customer, shipping }) });
+      const response = await fetch("/api/worldpay/preview-prepare", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: items.map(i => ({ slug: i.slug, quantity: i.qty })), customer, shipping }) });
       const result = await response.json();
       if (!response.ok || !result.reference) throw new Error(result.error || "Unable to start checkout");
       if (typeof result.ownershipSecret !== "string" || !/^[a-f0-9]{64}$/.test(result.ownershipSecret)) throw new Error("Checkout verification unavailable");
       setPreviewOwnershipSecret(result.ownershipSecret);
       setPreviewReference(result.reference);
-      setPreviewCheckoutId(result.checkoutId || "");
+      if (typeof result.checkoutId !== "string" || !result.checkoutId) throw new Error("Worldpay secure fields are not configured");
+      setPreviewCheckoutId(result.checkoutId);
       setPreviewStatus("Pending — no payment has been attempted.");
     } catch (e) { setError(e instanceof Error ? e.message : "Checkout unavailable"); setBusy(false); }
   }

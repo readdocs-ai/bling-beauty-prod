@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const cart=readFileSync('app/cart/page.tsx','utf8');
+const preview=readFileSync('app/api/worldpay/preview-prepare/route.ts','utf8');
+const legacy=readFileSync('app/api/checkout/route.ts','utf8');
+for(const fragment of ["process.env.VERCEL_ENV !== 'preview'", "process.env.WORLDPAY_ENVIRONMENT !== 'try'", "BLING_PREVIEW_CHECKOUT_PREPARATION", "randomBytes(32)", "browser_secret_sha256:ownershipHash", "amount_pence:amount", "status:'pending'", "supabaseAdmin.from('bling_checkout_attempts').insert"] ) assert.ok(preview.includes(fragment),fragment);
+assert.ok(cart.includes('fetch("/api/worldpay/preview-prepare"'));
+assert.ok(cart.includes('result.ownershipSecret'));
+assert.ok(legacy.includes('getOrderingState()'), 'existing production suspension logic must remain');
+assert.ok(!preview.includes('createIntegratedPayment('));
+assert.ok(!preview.includes('paid_verified'));
+console.log('Preview preparation safeguards: 13 structural checks passed. No provider/database calls exercised.');

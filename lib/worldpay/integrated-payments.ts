@@ -16,10 +16,10 @@ async function request(method: 'POST'|'GET', href: string, payload?: object): Pr
     headers: {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
       Accept: 'application/json',
-      ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+      ...(payload !== undefined ? { 'Content-Type': 'application/json' } : {}),
       'WP-Api-Version': API_VERSION,
     },
-    ...(method === 'POST' ? { body: JSON.stringify(payload ?? {}) } : {}),
+    ...(method === 'POST' && payload !== undefined ? { body: JSON.stringify(payload) } : {}),
     redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(15000),
   });
   const raw: unknown = await response.json().catch(() => null);
@@ -37,8 +37,8 @@ export async function createIntegratedPayment(serverValidatedPayload: object): P
 export async function advanceDeviceData(serverHeldAction: string, payload: object): Promise<ProviderResponse> {
   return request('POST', safeIntegratedAction(serverHeldAction,'device'), payload);
 }
-export async function advanceChallenge(serverHeldAction: string, payload: object): Promise<ProviderResponse> {
-  return request('POST', safeIntegratedAction(serverHeldAction,'challenge'), payload);
+export async function advanceChallenge(serverHeldAction: string): Promise<ProviderResponse> {
+  return request('POST', safeIntegratedAction(serverHeldAction,'challenge'));
 }
 export async function requestSettlement(serverHeldAction: string): Promise<ProviderResponse> {
   return request('POST', safeIntegratedAction(serverHeldAction,'settle'), {});

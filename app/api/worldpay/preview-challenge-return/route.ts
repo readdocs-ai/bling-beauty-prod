@@ -19,6 +19,6 @@ export async function POST(request:Request) {
   // It MUST NOT set an order paid, approved, or authenticated.
   const {data,error} = await supabaseAdmin.rpc('bling_mark_issuer_challenge_return',{p_challenge_reference:id});
   if (error || data !== true) return html('Unable to confirm the authentication return. Contact support.',409);
-  return new Response(`<!doctype html><html><head><meta charset="utf-8"><title>Bank authentication</title></head><body><p>Bank verification screen finished. Payment is not yet confirmed.</p><script>if(window.parent!==window){window.parent.postMessage({type:'bling-worldpay-issuer-return'},window.location.origin)}</script></body></html>`,{status:200,headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
+  return new Response(`<!doctype html><html><head><meta charset="utf-8"><title>Bank authentication</title></head><body><p>Bank verification screen finished. Payment is not yet confirmed.</p><script>if(window.parent!==window){window.parent.postMessage({type:'bling-worldpay-issuer-return',challengeReference:${JSON.stringify(id)}},window.location.origin)}</script></body></html>`,{status:200,headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
 }
 export async function GET(){return html('This endpoint accepts only bank authentication returns.',405);}

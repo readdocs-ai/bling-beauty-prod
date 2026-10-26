@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useCart } from "@/components/cart/cart-context";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { readBrowserAttempt, saveBrowserAttempt } from "@/lib/worldpay/browser-attempt.mjs";
 
 function formatGBP(n: number) {
   return n.toLocaleString("en-GB", { style: "currency", currency: "GBP" });
@@ -24,6 +25,22 @@ export default function CartPage() {
   const [previewStatus, setPreviewStatus] = useState("");
   const [reconciling, setReconciling] = useState(false);
   const [reconciliationResult, setReconciliationResult] = useState("");
+  const [recoveryReady, setRecoveryReady] = useState(false);
+  useEffect(() => {
+    try {
+      const attempt = readBrowserAttempt(window.sessionStorage);
+      if (attempt) {
+        setPreviewOwnershipSecret(attempt.ownershipSecret);
+        setPreviewCheckoutId(attempt.checkoutId);
+        setPreviewReference(attempt.reference);
+        setPreviewStatus(attempt.submitted ? 'Previous payment attempt restored. Check its status before continuing.' :
+          'Prepared checkout restored. No card details have been stored.');
+      }
+      setRecoveryReady(true);
+    } catch {
+      setError('Unable to restore payment status. Please contact support before starting another payment.');
+    }
+  }, []);
   // A browser may restore this page from its back/forward cache after payment.
   // The old pending state must not leave checkout permanently disabled.
   useEffect(() => {
@@ -37,7 +54,7 @@ export default function CartPage() {
   }, []);
   async function checkout() {
     // An already-prepared checkout must never create a second pending attempt.
-    if (busy || previewReference) return;
+    if (!recoveryReady || busy || previewReference) return;
     setBusy(true); setError("");
     try {
       const response = await fetch("/api/worldpay/preview-prepare", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: items.map(i => ({ slug: i.slug, quantity: i.qty })), customer, shipping }) });
@@ -45,6 +62,8 @@ export default function CartPage() {
       if (!response.ok || !result.reference) throw new Error(result.error || "Unable to start checkout");
       if (typeof result.ownershipSecret !== "string" || !/^[a-f0-9]{64}$/.test(result.ownershipSecret)) throw new Error("Checkout verification unavailable");
       if (typeof result.checkoutId !== "string" || !result.checkoutId) throw new Error("Worldpay secure fields are not configured");
+      saveBrowserAttempt(window.sessionStorage,{version:1,reference:result.reference,
+        ownershipSecret:result.ownershipSecret,checkoutId:result.checkoutId,submitted:false});
       // Set the reference last, only after all data needed to render the fields is validated.
       setPreviewOwnershipSecret(result.ownershipSecret);
       setPreviewCheckoutId(result.checkoutId);
@@ -158,7 +177,7 @@ export default function CartPage() {
                 <Input required placeholder="Town or city" autoComplete="address-level2" value={shipping.city} onChange={e => setShipping({ ...shipping, city: e.target.value })} />
                 <Input required placeholder="UK postcode" autoComplete="postal-code" value={shipping.postcode} onChange={e => setShipping({ ...shipping, postcode: e.target.value })} />
                 {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-                <Button disabled={busy || Boolean(previewReference)} className="w-full justify-center">{busy ? "Preparing…" : previewReference ? "Preview checkout prepared" : "Prepare Preview secure card fields"}</Button>
+                <Button disabled={!recoveryReady || busy || Boolean(previewReference)} className="w-full justify-center">{busy ? "Preparing…" : previewReference ? "Preview checkout prepared" : "Prepare Preview secure card fields"}</Button>
               </form>
               {previewReference && <WorldpayPreviewFields reference={previewReference} checkoutId={previewCheckoutId} ownershipSecret={previewOwnershipSecret} />}
               {previewReference && <div className="rounded-xl border p-3 text-sm" role="status">

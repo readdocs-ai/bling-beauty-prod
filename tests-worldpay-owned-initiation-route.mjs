@@ -5,7 +5,7 @@ for (const required of [
   "process.env.VERCEL_ENV !== 'preview'",
   "process.env.WORLDPAY_ENVIRONMENT !== 'try'",
   'claimOwnedPreviewAttempt(reference, ownershipSecret)',
-  'buildTryPaymentPayload(owned.attempt,sessionHref,entity,narrative)',
+  'buildTryPaymentPayload(owned.attempt,sessionHref,entity,narrative,threeDS)',
   'createIntegratedPayment(payload)',
   'storeVerifiedProviderProgress(reference,owned.claim,response)',
   "return fail('Payment attempt already claimed or ownership invalid', 409)",

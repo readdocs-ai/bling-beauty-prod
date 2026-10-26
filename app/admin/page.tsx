@@ -7,6 +7,9 @@ import { deleteProduct } from "@/lib/admin-actions";
 import { clearAdminCookie } from "@/lib/admin-auth";
 import { redirect } from "next/navigation";
 
+// Admin data must be read per request, never fetched into a static build.
+export const dynamic = "force-dynamic";
+
 async function logoutAction() {
   "use server";
   await clearAdminCookie();

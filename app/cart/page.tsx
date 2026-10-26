@@ -22,6 +22,8 @@ export default function CartPage() {
   const [previewOwnershipSecret, setPreviewOwnershipSecret] = useState("");
   const [previewCheckoutId, setPreviewCheckoutId] = useState("");
   const [previewStatus, setPreviewStatus] = useState("");
+  const [reconciling, setReconciling] = useState(false);
+  const [reconciliationResult, setReconciliationResult] = useState("");
   // A browser may restore this page from its back/forward cache after payment.
   // The old pending state must not leave checkout permanently disabled.
   useEffect(() => {
@@ -67,6 +69,35 @@ export default function CartPage() {
       if (!response.ok) throw new Error('Status unavailable');
       setPreviewStatus(`Order: ${result.status}. Worldpay: ${result.providerStage || 'not started'}.`);
     } catch { setPreviewStatus('Unable to verify status. Do not resubmit payment.'); }
+  }
+
+  async function reconcilePreviewPayment() {
+    if (!previewReference || !previewOwnershipSecret || reconciling) return;
+    setReconciling(true);
+    setReconciliationResult("Checking Worldpay Try — this does not retry or complete a payment…");
+    try {
+      const response = await fetch("/api/worldpay/preview-reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ reference: previewReference, ownershipSecret: previewOwnershipSecret }),
+      });
+      const result: { status?: string; providerState?: string; reason?: string } =
+        await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setReconciliationResult("Worldpay reconciliation is unavailable or inconclusive. Do not retry or fulfil this payment.");
+        return;
+      }
+      const state = result.providerState === "pending" || result.providerState === "failed" ||
+        result.providerState === "uncertain" ? result.providerState : "uncertain";
+      const reason = typeof result.reason === "string" && /^[a-zA-Z0-9_-]{1,100}$/.test(result.reason)
+        ? ` (${result.reason.replaceAll("_", " ")})` : "";
+      setReconciliationResult(`Worldpay query: ${state}${reason}. Local order: ${result.status || "unknown"}. This check does not authorise, retry or mark a payment paid. Operator review is required.`);
+    } catch {
+      setReconciliationResult("Unable to confirm Worldpay's response. Do not retry or fulfil this payment.");
+    } finally {
+      setReconciling(false);
+    }
   }
 
   return (
@@ -133,6 +164,11 @@ export default function CartPage() {
               {previewReference && <div className="rounded-xl border p-3 text-sm" role="status">
                 <p>{previewStatus}</p>
                 <Button variant="ghost" onClick={() => void checkPreviewStatus()} className="mt-2 w-full justify-center">Check Preview attempt status</Button>
+                <Button variant="ghost" disabled={reconciling || !previewOwnershipSecret}
+                  onClick={() => void reconcilePreviewPayment()} className="mt-2 w-full justify-center">
+                  {reconciling ? "Checking Worldpay…" : "Reconcile this Worldpay Try attempt (read-only)"}
+                </Button>
+                {reconciliationResult && <p role="status" aria-live="polite" className="mt-2 text-xs">{reconciliationResult}</p>}
                 <p className="mt-2 text-xs">Preview only: payment attempts may be submitted to Worldpay Try when explicitly enabled. Never enter a real card. A submitted payment is not a paid order.</p>
               </div>}
               <ButtonLink href="/shop" variant="ghost" className="w-full justify-center">Continue browsing</ButtonLink>

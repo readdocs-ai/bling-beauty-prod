@@ -2,6 +2,19 @@ import 'server-only';
 import { classifyPaymentQuery } from './worldpay/reconciliation-policy.mjs';
 
 export type WorldpayVerification = {state:'pending'|'failed'|'uncertain';reason:string;paymentId?:string;event?:string};
+/** Detailed lookup URL is built from a checked payment ID, never from browser/provider links. */
+export async function queryWorldpayPaymentDetails(paymentId:string):Promise<unknown> {
+  if(!/^[A-Za-z0-9_-]{3,128}$/.test(paymentId))throw Error('Invalid payment ID');
+  if(process.env.VERCEL_ENV!=='preview'||process.env.WORLDPAY_ENVIRONMENT!=='try')throw Error('Preview only');
+  const user=process.env.WORLDPAY_API_USERNAME?.trim(),password=process.env.WORLDPAY_API_PASSWORD?.trim();
+  if(!user||!password)throw Error('Worldpay credentials unavailable');
+  const response=await fetch(`https://try.access.worldpay.com/paymentQueries/payments/${encodeURIComponent(paymentId)}`,{
+    headers:{Authorization:`Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`,Accept:'application/vnd.worldpay.payment-queries-v1.hal+json'},
+    cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000),
+  });
+  if(response.status!==200)throw Error('Detailed provider query unavailable');
+  return response.json();
+}
 /** Query-only: never mutate order state from an aggregate/possibly delayed result. */
 export async function verifyWorldpayPayment(reference:string, amountPence:number):Promise<WorldpayVerification> {
   if (!/^BLING-[0-9a-f-]{36}$/.test(reference) || !Number.isSafeInteger(amountPence) || amountPence < 1) throw Error('Invalid order');

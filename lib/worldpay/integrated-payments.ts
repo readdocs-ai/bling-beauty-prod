@@ -41,7 +41,7 @@ export async function advanceChallenge(serverHeldAction: string): Promise<Provid
   return request('POST', safeIntegratedAction(serverHeldAction,'challenge'));
 }
 export async function requestSettlement(serverHeldAction: string): Promise<ProviderResponse> {
-  return request('POST', safeIntegratedAction(serverHeldAction,'settle'), {});
+  return request('POST', safeIntegratedAction(serverHeldAction,'settle'));
 }
 export async function queryIntegratedPayment(serverHeldLink: string): Promise<ProviderResponse> {
   return request('GET', safeIntegratedAction(serverHeldLink,'query'));

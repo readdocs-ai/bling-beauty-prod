@@ -26,6 +26,10 @@ export default function CartPage() {
   const [reconciling, setReconciling] = useState(false);
   const [reconciliationResult, setReconciliationResult] = useState("");
   const [recoveryReady, setRecoveryReady] = useState(false);
+  const [captureAvailable, setCaptureAvailable] = useState(false);
+  const [captureBusy, setCaptureBusy] = useState(false);
+  const [captureSubmitted, setCaptureSubmitted] = useState(false);
+  const [captureStatus, setCaptureStatus] = useState('');
   useEffect(() => {
     try {
       const attempt = readBrowserAttempt(window.sessionStorage);
@@ -87,7 +91,27 @@ export default function CartPage() {
       const result = await response.json();
       if (!response.ok) throw new Error('Status unavailable');
       setPreviewStatus(`Order: ${result.status}. Worldpay: ${result.providerStage || 'not started'}.`);
+      setCaptureAvailable(result.status === 'payment_processing' && result.providerStage === 'authorised');
     } catch { setPreviewStatus('Unable to verify status. Do not resubmit payment.'); }
+  }
+
+  async function capturePreviewPayment() {
+    if (!captureAvailable || captureBusy || captureSubmitted || !previewOwnershipSecret) return;
+    setCaptureBusy(true);
+    setCaptureSubmitted(true);
+    setCaptureStatus('Verifying the existing authorisation before requesting capture…');
+    try {
+      const response = await fetch('/api/worldpay/preview-capture', {
+        method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',
+        body:JSON.stringify({reference:previewReference,ownershipSecret:previewOwnershipSecret}),
+      });
+      const result = await response.json().catch(()=>({}));
+      setCaptureStatus(response.ok && result.state === 'settlement_requested'
+        ? 'Capture requested. Awaiting independent settlement verification; the order remains pending.'
+        : 'Capture is not confirmed. Do not retry payment or capture. Check the attempt status.');
+    } catch {
+      setCaptureStatus('Capture status is unresolved. Do not retry payment or capture.');
+    } finally {setCaptureBusy(false);}
   }
 
   async function reconcilePreviewPayment() {
@@ -183,6 +207,11 @@ export default function CartPage() {
               {previewReference && <div className="rounded-xl border p-3 text-sm" role="status">
                 <p>{previewStatus}</p>
                 <Button variant="ghost" onClick={() => void checkPreviewStatus()} className="mt-2 w-full justify-center">Check Preview attempt status</Button>
+                {captureAvailable && <Button disabled={captureBusy || captureSubmitted}
+                  onClick={() => void capturePreviewPayment()} className="mt-2 w-full justify-center">
+                  {captureBusy ? 'Checking capture…' : captureSubmitted ? 'Capture checked — review status' : 'Capture this authorised Try payment once'}
+                </Button>}
+                {captureStatus && <p role="status" aria-live="polite" className="mt-2 text-xs">{captureStatus}</p>}
                 <Button variant="ghost" disabled={reconciling || !previewOwnershipSecret}
                   onClick={() => void reconcilePreviewPayment()} className="mt-2 w-full justify-center">
                   {reconciling ? "Checking Worldpay…" : "Reconcile this Worldpay Try attempt (read-only)"}

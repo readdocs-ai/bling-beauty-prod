@@ -2,16 +2,17 @@
 
 Status: Preview hardening checkpoint. Not production-ready. A Worldpay Try authorisation has succeeded; capture and settlement are not yet verified.
 
-## Latest checkpoint: single capture approved for Preview testing
+## Latest checkpoint: Try capture accepted, settlement pending
 
 - Draft PR: https://github.com/readdocs-ai/bling-beauty-prod/pull/1, review branch `worldpay-checkout-hardening`, deployed commit `90fb54be18ee52b2821372ecc55153e3f041fd53`.
 - The Try bank challenge and issuer callback completed. Reference `BLING-bab5cc78-8486-4699-8b4b-862631605c35`, GBP 130.00, is independently reported as authorised. The user's Worldpay Try screenshot also states authorised but not captured.
 - Vercel protection intercepted the bank's cross-site POST. A temporarily approved exception for the review alias allowed testing; protection was restored afterwards. The bounded issuer form parser was fixed to tolerate additional provider fields without logging tokens.
-- The next package is local and uncommitted: owner-protected Preview/Try capture, independent summary and detailed payment matching, restricted Try full-settlement action URLs, and a durable one-shot database claim. Capture acceptance never marks an order paid.
+- Capture package deployed to Preview at commit `f91cfff8ce0d63c266108339b99ec0c465769a56`: owner-protected Preview/Try capture, independent summary and detailed payment matching, restricted Try full-settlement action URLs, and a durable one-shot database claim. Capture acceptance never marks an order paid.
 - Migration `supabase/migrations/20261026215839_worldpay_single_capture.sql` adds two service-role-only SECURITY INVOKER functions using existing columns. It creates no tables or columns. Applied with explicit approval to the connected project; verified anon/authenticated cannot execute either function and service_role can.
-- User explicitly approved migration, public review-branch commit/push, branch-scoped Preview capture flag and one capture of the existing GBP 130.00 Try authorisation. `BLING_PREVIEW_CAPTURE=true` is scoped only to Preview branch `worldpay-checkout-hardening`. Provider capture remains untested at this commit.
+- User explicitly approved migration, public review-branch commit/push, branch-scoped Preview capture flag and one capture of the existing GBP 130.00 Try authorisation. `BLING_PREVIEW_CAPTURE=true` is scoped only to Preview branch `worldpay-checkout-hardening`. The approved capture request was then accepted by Worldpay Try; Supabase records `settlement_requested`, the capture claim remains held, and the browser shows capture requested. The independent query still reports pending; no settled or paid status is claimed.
 - Current local checks: 24 Node test files pass, production build passes using placeholder Supabase configuration, and four simulated Chromium regression scenarios pass. Capture SQL is separately executed in disposable PGlite PostgreSQL, including role restrictions, ownership/amount checks and repeated claims. This is not a concurrent multi-session or real-provider capture test.
-- Remaining launch blockers include real Try capture and verified settlement, finalisation/admin order integration and email delivery, failure/recovery coverage, dependency remediation, and a separately controlled Live checkout rollout. Production ordering remains suspended.
+- Confirmed `store_settings.orders_suspended=true` and the test alias has no public protection override after capture.
+- Remaining launch blockers include verified settlement, finalisation/admin order integration and email delivery, failure/recovery coverage, dependency remediation, and a separately controlled Live checkout rollout. Production ordering remains suspended.
 
 The sections below record the earlier baseline checkpoint; their historical statements about testing and pending callback fixes are superseded by this latest checkpoint.
 

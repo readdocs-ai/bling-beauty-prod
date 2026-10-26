@@ -42,7 +42,7 @@ export async function POST(request:Request) {
   const ownershipHash=createHash('sha256').update(ownershipSecret).digest('hex');
   try {
     const {error}=await supabaseAdmin.from('bling_checkout_attempts').insert({
-      reference,status:'pending',amount_pence:amount,currency:'GBP',items:lines,
+      reference,status:'pending',payment_environment:'try',amount_pence:amount,currency:'GBP',items:lines,
       customer:parsed.data.customer,shipping:parsed.data.shipping,browser_secret_sha256:ownershipHash,
     });
     if(error) return fail('Preview database preparation unavailable',503);

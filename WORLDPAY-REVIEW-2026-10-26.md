@@ -2,6 +2,31 @@
 
 Status: Preview hardening checkpoint. Not production-ready. A Worldpay Try authorisation has succeeded; capture and settlement are not yet verified.
 
+## Next package: verified settlement, admin orders and email delivery
+
+The migration is applied and its private permissions verified. This package remains Preview/Try-only and keeps live ordering suspended. No customer/admin email has been sent by this work and no new provider payment has been submitted.
+
+- Authenticate Worldpay event signatures against exact bounded request bytes using provider key IDs and SHA256. Store minimal signed settlement receipts durably before acknowledging; never persist raw tokens, secrets or provider links.
+- An asynchronous worker independently matches the unique Worldpay query, reference, amount, currency, merchant and stored payment ID. The new private RPC atomically records verified settlement, creates one paid order and queues the existing durable jobs. Duplicate events/orders cannot create repeated work. Synthetic test events are not evidence of an actual Worldpay settlement.
+- Mark new attempts explicitly as Try. Existing attempts are deliberately not backfilled or assumed to be Live/Try. The earlier GBP 130.00 Try capture has a legacy unclassified attempt and needs a separately verified environment binding before this new worker can finalise it.
+- Admin orders, detail, overview and CSV combine existing records with verified Worldpay orders without copying data into Stripe fields. Test orders are labelled; test sales are excluded from the dashboard paid-value total. Notification state is visible in checkout operations.
+- Use one canonical email job queue. Customer and admin messages use stored verified order details and deterministic Resend idempotency keys. Provider acceptance is labelled accepted, not delivered. Uncertain sends remain blocked for review. Disabled email configuration does not consume jobs.
+- Order email delivery defaults off. Try messages require an explicit recipient allowlist and carry TEST labels. Sending address, reply-to and admin recipient are info@blingbeautyproducts.com. Domain verification and actual inbox delivery still require testing.
+- Browser status polling is read-only and cannot finalise an order or send email. Product mutations and the ordering switch now authenticate the admin session within their server actions. The suspension switch cannot resume ordering in this checkpoint.
+- Upgrade Next.js to 15.5.28, React/React DOM to 19.3.1, Zod to 4.6.7; update asynchronous route props and type packages. Pin PostCSS 8.5.32, including the nested framework dependency, to resolve its reported advisories. Current npm audit reports zero vulnerabilities.
+- Validation: 26 Node test files, executed disposable PostgreSQL capture/settlement migrations, and a local production build pass. All four simulated browser regression scenarios also pass after the upgrades. No Live or delivered-email result is claimed.
+
+### Required account configuration and launch gates
+
+1. Worldpay must enable event webhooks, Event-Signature HMAC and the settled event for this account/use case. Configure provider-issued signing keys securely in Vercel; never paste them into chat. The Preview endpoint is /api/worldpay/events and stays disabled until BLING_PREVIEW_SETTLEMENT_EVENTS=true plus WORLDPAY_EVENT_SIGNING_KEYS are configured. A protected Preview must be reachable by Worldpay during the agreed test window.
+2. Verify the Resend sender domain and test inbox receipt for both customer confirmation and admin notification. Preview key presence alone is not delivery proof. Configure BLING_ORDER_EMAILS_ENABLED=true and BLING_TEST_EMAIL_RECIPIENTS only after recipients and test sending are authorised.
+3. Durable receipts survive function termination. The admin recovery action processes pending receipts and pending email jobs without initiating or retrying payments. An unattended recovery schedule/queue and delivery/bounce monitoring still need production verification.
+4. Complete real-provider settled-event tests, duplicate/replay/failure cases, and recovery with the browser closed. Reconcile the original capture safely; do not capture it again.
+5. Implement and test the production Access checkout path, Live environment separation, automatic capture, declines/recovery, and final customer-facing copy. The old production HPP route is still suspended and must not be used for launch.
+6. Confirm stock/product contents (current catalogue copy describes unverified concept products), shipping operations, Worldpay account/PCI status and production email/provider configuration. Only then perform a separately approved controlled Live card test and launch.
+
+Official contracts: https://docs.worldpay.com/access/products/events/signature ; https://docs.worldpay.com/access/products/events/openapi/payment/settledpayment ; https://resend.com/docs/dashboard/emails/idempotency-keys .
+
 ## Latest checkpoint: Try capture accepted, settlement pending
 
 - Draft PR: https://github.com/readdocs-ai/bling-beauty-prod/pull/1, review branch `worldpay-checkout-hardening`, deployed commit `90fb54be18ee52b2821372ecc55153e3f041fd53`.

@@ -1,7 +1,10 @@
 import { cookies } from 'next/headers';
-import { createAdminSession, ADMIN_SESSION_MAX_AGE } from '@/lib/admin-session';
+import { createAdminSession, verifyAdminSession, ADMIN_SESSION_MAX_AGE } from '@/lib/admin-session';
 
 const COOKIE = 'bbp_admin';
+export async function requireAdminSession(){
+ if(!await verifyAdminSession((await cookies()).get(COOKIE)?.value??''))throw Error('Administrator authentication required');
+}
 
 export async function setAdminCookie() {
   const store = await cookies();

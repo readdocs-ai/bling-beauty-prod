@@ -2,7 +2,8 @@ import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PaymentResult } from "@/components/payment-result";
 
-export default function SuccessPage({ searchParams }: { searchParams: { session_id?: string; reference?: string } }) {
+export default async function SuccessPage({ searchParams }: { searchParams: Promise<{ session_id?: string; reference?: string }> }) {
+  const query=await searchParams;
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 text-center">
       <div className="mx-auto mb-6 inline-flex items-center justify-center rounded-full border border-soft-black/10 bg-white/60 px-4 py-2 shadow-soft">
@@ -10,10 +11,10 @@ export default function SuccessPage({ searchParams }: { searchParams: { session_
       </div>
 
       <h1 className="font-display text-4xl">Thank you</h1>
-      <PaymentResult reference={searchParams?.reference ?? ""} />
+      <PaymentResult reference={query?.reference ?? ""} />
 
-      {searchParams?.session_id && (
-        <div className="mt-6 flex justify-center"><Badge>Session: {searchParams.session_id}</Badge></div>
+      {query?.session_id && (
+        <div className="mt-6 flex justify-center"><Badge>Session: {query.session_id}</Badge></div>
       )}
 
       <div className="mt-10 flex justify-center gap-3">

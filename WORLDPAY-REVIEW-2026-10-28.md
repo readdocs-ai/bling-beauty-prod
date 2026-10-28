@@ -1,6 +1,6 @@
 # Worldpay automatic settlement checkpoint — 28 October 2026
 
-Status: tested implementation prepared; remote migration, branch publication and activation awaiting explicit approval. Production ordering remains suspended. No new Worldpay transaction or email was submitted during this checkpoint.
+Status: migration applied and implementation published to the existing review branch, with automatic settlement enabled only for that branch's Preview. One new Worldpay Try bank-challenge payment reached settlement_requested. Production ordering remains suspended. No order notification was sent by this test.
 
 ## Changes
 
@@ -15,7 +15,7 @@ Status: tested implementation prepared; remote migration, branch publication and
 
 supabase/migrations/20261028192118_worldpay_auto_settlement.sql adds settlement_mode to attempts (existing/default manual) and last_checked_at to the private settlement inbox, and updates two existing service-role-only SECURITY INVOKER functions. No existing attempt is captured, finalised or retried by the migration.
 
-The installed definitions of both affected functions were compared against the previous source checkpoint and match. Automatic approval review rejected applying the new migration because broad project authority was insufficient for this specific persistent database/payment-behaviour change. No migration was applied, no flag enabled and no deployment containing this code was published.
+Before applying the migration, the installed definitions of both affected functions were compared against the previous source checkpoint and matched. After explicit approval for the three execution steps, the migration was applied and service-only permissions verified. Existing attempts retain manual mode and their existing locks.
 
 ## Validation
 
@@ -25,9 +25,14 @@ The installed definitions of both affected functions were compared against the p
 - Five simulated Chromium scenarios pass: successful challenge, initiation/device/challenge network failures, and automatic mode after reload with no manual-capture button. No external provider or mail requests are allowed in this suite.
 - npm audit reports zero vulnerabilities at this checkpoint.
 
-## Next authorised execution package
+## Actual Worldpay Try verification
 
-After explicit approval: apply this migration, publish the changes to the existing review branch, enable BLING_PREVIEW_AUTO_SETTLEMENT only for that branch's Preview and run one fresh Worldpay Try bank-challenge test with automatic settlement. Do not touch the earlier captured attempt. Restore any temporary Preview protection exception afterwards.
+- Verified the Ready Preview deployment uses the automatic-settlement implementation and branch-scoped configuration.
+- Prepared one new GBP 130.00 attempt with synthetic customer details and an official Worldpay Try challenge card. The user performed payment submission and completed the simulated bank challenge.
+- The real provider flow advanced through device data and issuer challenge to settlement_requested with server-stored settlement_mode=auto and payment_environment=try. No separate manual capture was invoked; the earlier captured attempt was untouched.
+- An independent read-only Worldpay query remained pending and required verified settlement. Local status correctly remains payment_processing; no paid order was created. This is provider initiation/3DS/automatic-settlement-request evidence, not evidence that funds settled.
+- The temporary test-alias protection override was revoked and its empty protectionBypass configuration verified after the callback completed.
+- Production ordering remains suspended. The connected settlement inbox and paid-order tables still have no receipts or paid orders at this checkpoint.
 
 ## Remaining production work
 

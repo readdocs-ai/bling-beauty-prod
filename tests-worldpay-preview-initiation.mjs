@@ -8,6 +8,12 @@ const p=buildTryPaymentPayload(o,s,'default','Bling Beauty',browser);
 assert.equal(p.instruction.value.amount,1299);
 assert.equal(p.instruction.paymentInstrument.type,'checkout');
 assert.equal(p.transactionReference,o.reference);
+assert.equal(p.instruction.settlement,undefined);
+const auto=buildTryPaymentPayload({...o,settlement_mode:'auto'},s,'default','Bling Beauty',browser);
+assert.deepEqual(auto.instruction.settlement,{auto:true});
+assert.equal(auto.instruction.threeDS.mode,'always');
+assert.equal(auto.instruction.value.amount,1299);
+assert.throws(()=>buildTryPaymentPayload({...o,settlement_mode:'unexpected'},s,'default','Bling Beauty',browser));
 for(const v of ['https://evil.example/sessions/abc','http://try.access.worldpay.com/sessions/abc','https://try.access.worldpay.com/sessions/abc?x=1'])
   assert.throws(()=>buildTryPaymentPayload(o,v,'default','Bling Beauty',browser));
 assert.throws(()=>buildTryPaymentPayload({...o,amount_pence:1,status:'pending'},s,'default','Bling Beauty',browser));

@@ -57,9 +57,9 @@ async function scenario(mode){
    if(path.endsWith('preview-challenge-complete')){
     calls.complete++;
     if(mode==='challenge-network-error') return route.abort('failed');
-    return json({providerStage:'authorised',status:'payment_processing'});
+    return json({providerStage:mode==='auto-settlement'?'settlement_requested':'authorised',status:'payment_processing'});
    }
-   if(path.endsWith('preview-attempt-status')) return json({status:'payment_processing',providerStage:'challenge'});
+   if(path.endsWith('preview-attempt-status')) return json({status:'payment_processing',providerStage:mode==='auto-settlement'?'authorised':'challenge',settlementMode:mode==='auto-settlement'?'auto':'manual'});
    if(path.endsWith('preview-reconcile')) return json({status:'payment_processing',providerState:'pending',reason:'not_indexed_yet'});
    throw Error('Unexpected Worldpay route');
   }
@@ -95,12 +95,13 @@ async function scenario(mode){
  await page.getByText('Previous payment attempt restored. Check its status before continuing.',{exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Test payment submitted — check status',exact:true}).isDisabled(),true);
  await page.getByRole('button',{name:'Check Preview attempt status',exact:true}).click();
- await page.getByText('Order: payment_processing. Worldpay: challenge.',{exact:true}).waitFor();
+ await page.getByText(`Order: payment_processing. Worldpay: ${mode==='auto-settlement'?'authorised':'challenge'}.`,{exact:true}).waitFor();
+ if(mode==='auto-settlement')assert.equal(await page.getByRole('button',{name:'Capture this authorised Try payment once',exact:true}).count(),0);
  assert.equal(calls.prepare,1);assert.equal(calls.initiate,1);
  assert.deepEqual(errors,[]);
  console.log('PASS simulated browser:',mode);scenarios++;
  await context.close();
 }
-try{for(const mode of ['challenge-success','initiate-network-error','device-network-error','challenge-network-error'])await scenario(mode);}
+try{for(const mode of ['challenge-success','initiate-network-error','device-network-error','challenge-network-error','auto-settlement'])await scenario(mode);}
 finally{await browser.close();}
 console.log(`${scenarios} simulated browser scenarios passed. Real provider and database transaction tests are still required.`);

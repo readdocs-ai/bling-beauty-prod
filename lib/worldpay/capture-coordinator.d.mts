@@ -1,4 +1,4 @@
-type Attempt = {status:string;provider_outcome:string;provider_continuation_claim:string|null;currency:string;amount_pence:number;payment_claim_id:string;provider_actions:Record<string,string>};
+type Attempt = {status:string;settlement_mode?:'manual'|'auto';provider_outcome:string;provider_continuation_claim:string|null;currency:string;amount_pence:number;payment_claim_id:string;provider_actions:Record<string,string>};
 type Input = {reference:string;ownershipSecret:string};
 type Claim = {action:string;captureClaim:string;paymentClaim:string};
 export function matchesCaptureDetails(payment:unknown,expected:{reference:string;amountPence:number;entity:string;paymentId:string}):boolean;

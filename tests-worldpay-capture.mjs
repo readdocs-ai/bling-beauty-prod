@@ -35,6 +35,9 @@ f=fixture({settle:async()=>({httpStatus:500,data:{outcome:'sentForSettlement'}})
 assert.equal((await captureOwnedAttempt(input,f.deps)).state,'uncertain');assert.equal(recorded.outcome,'uncertain');
 assert.equal(matchesCaptureDetails({...detail,events:[{eventName:'unknown'}]}, {reference,paymentId,entity:'default',amountPence:13000}),false);
 const original=fixture();
+const automatic=fixture({readOwned:async()=>({...await original.deps.readOwned(),settlement_mode:'auto'})});
+assert.equal((await captureOwnedAttempt(input,automatic.deps)).state,'unavailable');
+assert.equal(automatic.calls.claim,0);assert.equal(automatic.calls.settle,0);
 f=fixture({readOwned:async()=>({...await original.deps.readOwned(),provider_actions:{}}),details:async()=>({...detail,_links:{'cardPayments:settle':{href:'/payments/settlements/full/provider-token'}}}),
   claim:async(_input,_attempt,_paymentId,href)=>({action:href,captureClaim:'claim',paymentClaim:'payment-claim'})});
 assert.equal((await captureOwnedAttempt(input,f.deps)).state,'settlement_requested');assert.equal(f.calls.settle,1);

@@ -26,7 +26,7 @@ export async function POST(request:Request){
       entity,
       async readOwned(reference,secret){
         const {data,error}=await supabaseAdmin.from('bling_checkout_attempts').select(
-          'status,provider_outcome,provider_continuation_claim,currency,amount_pence,payment_claim_id,provider_actions,browser_secret_sha256'
+          'status,settlement_mode,provider_outcome,provider_continuation_claim,currency,amount_pence,payment_claim_id,provider_actions,browser_secret_sha256'
         ).eq('reference',reference).maybeSingle();
         if(error)throw Error('Capture database unavailable');
         if(!data||!/^[a-f0-9]{64}$/.test(data.browser_secret_sha256??''))return null;

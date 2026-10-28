@@ -10,7 +10,8 @@ export default async function CheckoutOperations(){
  ]);
  const checks=[['Live ordering suspended',settings.data?.orders_suspended===true],['Worldpay event signatures configured',!!process.env.WORLDPAY_EVENT_SIGNING_KEYS],
   ['Preview settlement processing enabled',process.env.BLING_PREVIEW_SETTLEMENT_EVENTS==='true'],['Resend configured',!!process.env.RESEND_API_KEY],
-  ['Order email delivery enabled',process.env.BLING_ORDER_EMAILS_ENABLED==='true'],['Test recipient list configured',!!process.env.BLING_TEST_EMAIL_RECIPIENTS]] as const;
+  ['Order email delivery enabled',process.env.BLING_ORDER_EMAILS_ENABLED==='true'],['Test recipient list configured',!!process.env.BLING_TEST_EMAIL_RECIPIENTS],
+  ['Automatic settlement for new test attempts enabled',process.env.BLING_PREVIEW_AUTO_SETTLEMENT==='true']] as const;
  return <main className="mx-auto max-w-5xl px-4 py-12"><Link href="/admin" className="underline">Back to admin</Link><h1 className="mt-5 text-3xl">Checkout operations</h1>
  <p className="mt-3">Current environment: {process.env.WORLDPAY_ENVIRONMENT??'Not configured'}. Configuration checks alone do not confirm a successful payment or email delivery.</p>
  <ul className="mt-5 space-y-2">{checks.map(([label,ok])=><li key={label}>{label}: <strong>{ok?'Yes':'No'}</strong></li>)}</ul>

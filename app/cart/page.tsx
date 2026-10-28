@@ -91,7 +91,7 @@ export default function CartPage() {
       const result = await response.json();
       if (!response.ok) throw new Error('Status unavailable');
       setPreviewStatus(`Order: ${result.status}. Worldpay: ${result.providerStage || 'not started'}.`);
-      setCaptureAvailable(result.status === 'payment_processing' && result.providerStage === 'authorised');
+      setCaptureAvailable(result.settlementMode !== 'auto' && result.status === 'payment_processing' && result.providerStage === 'authorised');
     } catch { setPreviewStatus('Unable to verify status. Do not resubmit payment.'); }
   }
 

@@ -15,6 +15,10 @@ assert.throws(()=>parseSettledEvent(Buffer.from(JSON.stringify({...body,eventDet
 const attempt={reference,payment_environment:'try',currency:'GBP',amount_pence:13000,payment_claim_id:'claim',provider_payment_id:'pay_test'};
 const q={paymentId:'pay_test',state:'pending',event:'settlementrequestsubmitted'};
 assert.equal(matchesSettledQuery(e,attempt,q),true);
+assert.equal(matchesSettledQuery(e,{...attempt,settlement_mode:'auto',provider_payment_id:null},q),true);
+assert.equal(matchesSettledQuery(e,{...attempt,settlement_mode:'manual',provider_payment_id:null},q),false);
+assert.equal(matchesSettledQuery(e,{...attempt,settlement_mode:'auto',provider_payment_id:'different'},q),false);
+assert.equal(matchesSettledQuery(e,{...attempt,settlement_mode:'auto',provider_payment_id:null},{...q,paymentId:'invalid/payment'}),false);
 for(const override of [{payment_environment:'live'},{amount_pence:1},{provider_payment_id:'another'},{payment_claim_id:null}])assert.equal(matchesSettledQuery(e,{...attempt,...override},q),false);
 assert.equal(matchesSettledQuery(e,attempt,{...q,event:'authorizationsucceeded'}),false);
 assert.equal(matchesSettledQuery(e,attempt,{...q,state:'uncertain'}),false);

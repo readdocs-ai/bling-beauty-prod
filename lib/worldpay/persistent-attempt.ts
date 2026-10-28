@@ -45,7 +45,7 @@ export async function storeVerifiedProviderProgress(reference: string, claim: st
 export async function getCheckoutAttemptStatus(reference: string, ownershipSecret: string) {
   if (!REFERENCE.test(reference) || !/^[a-f0-9]{64}$/.test(ownershipSecret)) return null;
   const { data, error } = await supabaseAdmin.from('bling_checkout_attempts')
-    .select('status,provider_outcome,browser_secret_sha256').eq('reference',reference).maybeSingle();
+    .select('status,provider_outcome,browser_secret_sha256,settlement_mode').eq('reference',reference).maybeSingle();
   if (error || !data || typeof data.browser_secret_sha256 !== 'string' ||
       !/^[a-f0-9]{64}$/.test(data.browser_secret_sha256)) return null;
   const expected = Buffer.from(data.browser_secret_sha256, 'hex');
@@ -53,6 +53,7 @@ export async function getCheckoutAttemptStatus(reference: string, ownershipSecre
   if (!timingSafeEqual(expected, actual)) return null;
   // No PII, provider action URLs, claim IDs, or payment IDs leave this function.
   return {
+    settlementMode:data.settlement_mode==='auto'?'auto':'manual',
     status: ['pending','payment_processing','settlement_verified','paid_verified'].includes(data.status)
       ? data.status : 'unresolved',
     providerStage: ['device_data','challenge','authorised','settlement_requested','declined','uncertain']

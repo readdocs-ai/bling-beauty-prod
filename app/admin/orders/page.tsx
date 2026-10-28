@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
+import {mergeAdminOrders} from '@/lib/admin-orders.mjs';
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +17,17 @@ function date(value: unknown) {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-GB", { timeZone: "Europe/London" });
 }
 
-export default async function OrdersPage({ searchParams }: { searchParams?: { q?: string; payment?: string; fulfilment?: string } }) {
-  const q = String(searchParams?.q ?? "").trim().toLowerCase().slice(0, 120);
-  const payment = String(searchParams?.payment ?? "").trim().toLowerCase().slice(0, 80);
-  const fulfilment = String(searchParams?.fulfilment ?? "").trim().toLowerCase().slice(0, 80);
-  const { data, error } = await supabaseAdmin.from("orders").select("*").order("created_at", { ascending: false }).limit(500);
-  const orders = (data ?? []) as Record<string, unknown>[];
+export default async function OrdersPage({ searchParams }: { searchParams?: Promise<{ q?: string; payment?: string; fulfilment?: string }> }) {
+  const filters=await searchParams;
+  const q = String(filters?.q ?? "").trim().toLowerCase().slice(0, 120);
+  const payment = String(filters?.payment ?? "").trim().toLowerCase().slice(0, 80);
+  const fulfilment = String(filters?.fulfilment ?? "").trim().toLowerCase().slice(0, 80);
+  const [legacy,worldpay]=await Promise.all([
+    supabaseAdmin.from('orders').select('*').order('created_at',{ascending:false}).limit(500),
+    supabaseAdmin.from('bling_paid_orders').select('*').eq('status','paid').order('created_at',{ascending:false}).limit(500),
+  ]);
+  const error=legacy.error??worldpay.error;
+  const orders = mergeAdminOrders(legacy.data??[],worldpay.data??[]);
   const payments = Array.from(new Set(orders.map(o => status(o.payment_status)))).sort();
   const fulfilments = Array.from(new Set(orders.map(o => status(o.fulfilment_status ?? o.status)))).sort();
   const filtered = orders.filter(o => {
@@ -38,7 +44,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: { q?
     {(q || payment || fulfilment) && <Link href="/admin/orders" className="mt-3 inline-block text-sm underline">Clear filters</Link>}
     {error ? <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">Unable to load orders from Supabase. Confirm the orders table exists and its schema. {error.message}</div> : <>
       <p className="mt-5 text-sm text-soft-black/60">Showing {filtered.length} of {orders.length} fetched orders. Filters and summary cards cover only these recent records.</p>
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-soft-black/10 bg-white"><table className="w-full min-w-[780px] text-left text-sm"><thead className="border-b bg-rose-50/50"><tr>{["Order", "Customer", "Date", "Total", "Payment", "Fulfilment"].map(h => <th key={h} className="px-4 py-3 font-semibold">{h}</th>)}</tr></thead><tbody>{filtered.map((o, i) => <tr key={String(o.id ?? i)} className="border-b border-soft-black/10"><td className="px-4 py-4 font-medium"><Link className="underline decoration-soft-black/30 underline-offset-4 hover:decoration-soft-black" href={`/admin/orders/${encodeURIComponent(String(o.id ?? ""))}`}>{display(o.order_number ?? o.id)}</Link></td><td className="px-4 py-4"><div>{display(o.customer_name ?? o.name)}</div><div className="text-xs text-soft-black/60">{display(o.customer_email ?? o.email)}</div></td><td className="px-4 py-4">{date(o.created_at)}</td><td className="px-4 py-4">{amount(o)}</td><td className="px-4 py-4">{display(o.payment_status)}</td><td className="px-4 py-4">{display(o.fulfilment_status ?? o.status)}</td></tr>)}{!filtered.length && <tr><td colSpan={6} className="px-4 py-10 text-center text-soft-black/60">No matching orders.</td></tr>}</tbody></table></div>
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-soft-black/10 bg-white"><table className="w-full min-w-[780px] text-left text-sm"><thead className="border-b bg-rose-50/50"><tr>{["Order", "Customer", "Date", "Total", "Payment", "Fulfilment"].map(h => <th key={h} className="px-4 py-3 font-semibold">{h}</th>)}</tr></thead><tbody>{filtered.map((o, i) => <tr key={String(o.id ?? i)} className="border-b border-soft-black/10"><td className="px-4 py-4 font-medium"><Link className="underline decoration-soft-black/30 underline-offset-4 hover:decoration-soft-black" href={`/admin/orders/${encodeURIComponent(String(o.id ?? ""))}`}>{display(o.order_number ?? o.id)}</Link>{o.test_order&&<span className="ml-2 rounded bg-amber-100 px-2 py-1 text-xs">TEST — do not dispatch</span>}</td><td className="px-4 py-4"><div>{display(o.customer_name ?? o.name)}</div><div className="text-xs text-soft-black/60">{display(o.customer_email ?? o.email)}</div></td><td className="px-4 py-4">{date(o.created_at)}</td><td className="px-4 py-4">{amount(o)}</td><td className="px-4 py-4">{display(o.payment_status)}</td><td className="px-4 py-4">{display(o.fulfilment_status ?? o.status)}</td></tr>)}{!filtered.length && <tr><td colSpan={6} className="px-4 py-10 text-center text-soft-black/60">No matching orders.</td></tr>}</tbody></table></div>
       <p className="mt-4 text-xs text-soft-black/60">CSV export includes the latest 500 records, regardless of on-screen filters. Status values come from the database and are not proof of a verified Worldpay payment. Confirm payment with your provider before dispatch.</p>
     </>}
   </main>;

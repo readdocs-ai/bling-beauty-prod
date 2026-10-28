@@ -3,10 +3,11 @@ export interface PreviewClaimedOrder {
   status: string;
   currency: string;
   amount_pence: number;
+  settlement_mode?: 'manual'|'auto';
 }
 export function buildTryPaymentPayload(order: PreviewClaimedOrder, sessionHref: string, entity: string, narrative: string, threeDS: { returnUrl: string; userAgent: string; language: string; width: number; height: number; timeZone: number }): {
   transactionReference: string;
   merchant: { entity: string };
   channel: 'ecom';
-  instruction: { method: 'card'; threeDS: object; paymentInstrument: { type: 'checkout'; sessionHref: string }; narrative: { line1: string }; value: { currency: 'GBP'; amount: number } };
+  instruction: { method: 'card'; settlement?:{auto:true}; threeDS: object; paymentInstrument: { type: 'checkout'; sessionHref: string }; narrative: { line1: string }; value: { currency: 'GBP'; amount: number } };
 };

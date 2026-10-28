@@ -14,7 +14,7 @@ function toLines(value: any) {
 }
 
 type PageProps = {
-  params: { id: string } | Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 };
 
 export default async function EditProduct({ params }: PageProps) {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {mergeAdminOrders} from "@/lib/admin-orders.mjs";
 import { getOrderingState } from "@/lib/order-switch";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ButtonLink, Button } from "@/components/ui/button";
@@ -6,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { deleteProduct } from "@/lib/admin-actions";
 import { clearAdminCookie } from "@/lib/admin-auth";
 import { redirect } from "next/navigation";
+
+// Admin data must be read per request, never fetched into a static build.
+export const dynamic = "force-dynamic";
 
 async function logoutAction() {
   "use server";
@@ -20,10 +24,13 @@ export default async function AdminPage() {
   const products = data ?? [];
   const ordering = await getOrderingState();
 
-  const { data: recentOrders, error: orderError } = await supabaseAdmin.from("orders").select("*").order("created_at", { ascending: false }).limit(8);
-  const ordersAvailable = !orderError;
-  const orders = recentOrders ?? [];
-  const paid = orders.filter((o: any) => ["paid", "captured", "succeeded"].includes(String(o.payment_status ?? "").toLowerCase()));
+  const [legacyOrders,verifiedOrders]=await Promise.all([
+    supabaseAdmin.from('orders').select('*').order('created_at',{ascending:false}).limit(8),
+    supabaseAdmin.from('bling_paid_orders').select('*').eq('status','paid').order('created_at',{ascending:false}).limit(8),
+  ]);
+  const ordersAvailable = !legacyOrders.error&&!verifiedOrders.error;
+  const orders = mergeAdminOrders(legacyOrders.data??[],verifiedOrders.data??[]).slice(0,8);
+  const paid = orders.filter((o: any) => !o.test_order && ["paid", "captured", "succeeded"].includes(String(o.payment_status ?? "").toLowerCase()));
   const sales = paid.reduce((sum: number, o: any) => sum + Number(o.total_gbp ?? o.total_amount_gbp ?? 0), 0);
 
   return (
@@ -44,6 +51,7 @@ export default async function AdminPage() {
       </div>
 
       <div className="mt-6 rounded-2xl border border-soft-black/10 bg-white p-5"><h2 className="font-display text-xl">New orders switch</h2><p className="mt-2 font-semibold">{ordering.configured ? (ordering.suspended ? "Suspended" : "Accepting new orders") : "Not configured — blocked"}</p><Link href="/admin/order-settings" className="mt-3 inline-block rounded-xl bg-soft-black px-4 py-2 text-sm text-white">Manage new orders</Link></div>
+      <p className="mt-5"><Link href="/admin/checkout-operations" className="font-semibold underline">Checkout operations and email delivery</Link></p>
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-soft-black/10 bg-white p-5"><div className="text-sm text-soft-black/60">Products</div><div className="mt-2 font-display text-3xl">{products.length}</div></div>
         <div className="rounded-2xl border border-soft-black/10 bg-white p-5"><div className="text-sm text-soft-black/60">Recent orders</div><div className="mt-2 font-display text-3xl">{ordersAvailable ? orders.length : "—"}</div><div className="mt-1 text-xs text-soft-black/60">Latest 8 records, not lifetime total</div></div>

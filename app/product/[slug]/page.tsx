@@ -19,8 +19,8 @@ function slugify(input?: string | null) {
     .replace(/-+/g, "-");
 }
 
-export default async function ProductPage({ params }: { params: { slug?: string } }) {
-  const raw = params?.slug ?? "";
+export default async function ProductPage({ params }: { params: Promise<{ slug?: string }> }) {
+  const raw = (await params)?.slug ?? "";
   if (!raw) return notFound();
 
   const normalized = slugify(raw);

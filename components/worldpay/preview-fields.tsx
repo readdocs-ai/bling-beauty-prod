@@ -3,6 +3,7 @@ import Script from "next/script";
 import WorldpayDeviceData from "./device-data";
 import IssuerChallenge from "./issuer-challenge";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { markBrowserAttemptSubmitted, readBrowserAttempt } from "@/lib/worldpay/browser-attempt.mjs";
 
 type Checkout = {
   remove?: () => void;
@@ -17,11 +18,15 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
   const [loaded, setLoaded] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [deviceData, setDeviceData] = useState<unknown>(null);
   const [challenge, setChallenge] = useState<unknown>(null);
   const [status, setStatus] = useState("Waiting for secure Worldpay fields…");
   const instance = useRef<Checkout | null>(null);
   const busyRef = useRef(false);
+  const submittedRef = useRef(false);
+  const deviceContinuationStarted = useRef(false);
+  const challengeContinuationStarted = useRef(false);
   const mountedRef = useRef(true);
 
   const init = useCallback(() => {
@@ -48,16 +53,30 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
 
   useEffect(() => {
     mountedRef.current = true;
+    try {
+      const restored = readBrowserAttempt(window.sessionStorage);
+      if (restored?.reference !== reference || restored.submitted) {
+        submittedRef.current = true;
+        setSubmitted(true);
+        setStatus('Previous payment attempt restored. Check its status; do not submit another payment.');
+        return;
+      }
+    } catch {
+      submittedRef.current = true;
+      setSubmitted(true);
+      setStatus('Unable to restore payment status. Do not submit another payment.');
+      return;
+    }
     init();
     return () => {
       mountedRef.current = false;
       instance.current?.remove?.();
       instance.current = null;
     };
-  }, [init]);
+  }, [init, reference]);
 
   function testSessions() {
-    if (busyRef.current || !ready || !instance.current?.generateSessionState) return;
+    if (busyRef.current || submittedRef.current || !ready || !instance.current?.generateSessionState) return;
     busyRef.current = true;
     setBusy(true);
     setStatus("Requesting a disposable card session from Worldpay Try…");
@@ -72,6 +91,16 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
         }
         // Treat the session as a one-time credential. Never log or persist it.
         // No auto-retry, even after a network error: Worldpay might have processed the request.
+        if (submittedRef.current) return;
+        try { markBrowserAttemptSubmitted(window.sessionStorage, reference); }
+        catch {
+          busyRef.current = false;
+          setBusy(false);
+          setStatus('Payment recovery is unavailable. No payment has been attempted. Contact support.');
+          return;
+        }
+        submittedRef.current = true;
+        setSubmitted(true);
         try {
           const response = await fetch("/api/worldpay/preview-initiate", {
             method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" },
@@ -103,40 +132,54 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
   }
 
   async function continueDevice(collectionReference: string) {
+    if (deviceContinuationStarted.current) return;
+    deviceContinuationStarted.current = true;
+    try {
     const response = await fetch('/api/worldpay/preview-device-data', {
       method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',
       body: JSON.stringify({reference,ownershipSecret,collectionReference}),
     });
     const result: {providerStage?:string; challenge?:unknown} = await response.json().catch(()=>({}));
-    setDeviceData(null);
-    if (response.ok && result.providerStage === 'challenge' && result.challenge) setChallenge(result.challenge);
-    setStatus(response.ok ? 'Worldpay authentication progressed. Payment is not confirmed.' :
-      'Authentication status is unresolved. Do not retry payment.');
+      if (!mountedRef.current) return;
+      setDeviceData(null);
+      if (response.ok && result.providerStage === 'challenge' && result.challenge) setChallenge(result.challenge);
+      setStatus(response.ok ? 'Worldpay authentication progressed. Payment is not confirmed.' :
+        'Authentication status is unresolved. Do not retry payment.');
+    } catch {
+      if (mountedRef.current) setStatus('Authentication status is unresolved. Do not retry payment.');
+    }
   }
   async function continueChallenge() {
+    if (challengeContinuationStarted.current) return;
+    challengeContinuationStarted.current = true;
+    try {
     const response = await fetch('/api/worldpay/preview-challenge-complete', {
       method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',
       body:JSON.stringify({reference,ownershipSecret}),
     });
-    setChallenge(null);
-    setStatus(response.ok ? 'Bank authentication submitted for verification. Payment is not confirmed.' :
-      'Bank verification unresolved. Do not retry payment.');
+      if (!mountedRef.current) return;
+      setChallenge(null);
+      setStatus(response.ok ? 'Bank authentication submitted for verification. Payment is not confirmed.' :
+        'Bank verification unresolved. Do not retry payment.');
+    } catch {
+      if (mountedRef.current) setStatus('Bank verification unresolved. Do not retry payment.');
+    }
   }
   return <section className="rounded-xl border border-amber-400 p-4">
     <Script src="https://try.access.worldpay.com/access-checkout/v2/checkout.js" strategy="afterInteractive"
-      onLoad={() => setLoaded(true)} onError={() => setStatus("Worldpay SDK could not load.")} />
+      onReady={() => setLoaded(true)} onError={() => setStatus("Worldpay SDK could not load.")} />
     <h3 className="font-semibold">Worldpay Access API — Preview diagnostics</h3>
     <p className="my-2 text-sm" role="status" aria-live="polite">{status}</p>
     <form id="bling-preview-card-form" onSubmit={event => { event.preventDefault(); testSessions(); }}>
       <label className="block text-sm">Card number<div id="bling-preview-pan" className="h-12 rounded border p-2" /></label>
       <label className="mt-3 block text-sm">Expiry<div id="bling-preview-expiry" className="h-12 rounded border p-2" /></label>
       <label className="mt-3 block text-sm">CVC<div id="bling-preview-cvv" className="h-12 rounded border p-2" /></label>
-      <button className="mt-4 rounded border px-4 py-2 disabled:opacity-50" type="submit" disabled={!ready || busy}>
-        {busy ? "Checking sessions…" : "Submit Worldpay Try test payment"}
+      <button className="mt-4 rounded border px-4 py-2 disabled:opacity-50" type="submit" disabled={!ready || busy || submitted}>
+        {busy ? "Submitting test payment…" : submitted ? "Test payment submitted — check status" : "Submit Worldpay Try test payment"}
       </button>
     </form>
     {deviceData ? <WorldpayDeviceData deviceData={deviceData} onComplete={collectionReference => void continueDevice(collectionReference)} /> : null}
     {challenge ? <IssuerChallenge challenge={challenge} onReturn={() => void continueChallenge()} /> : null}
-    <p className="mt-3 text-sm text-amber-900">Preview only, pending order {reference.slice(0, 14)}… TEST CARDS ONLY. This action can initiate a Worldpay Try payment when enabled by the server. It does not confirm an order as paid. Do not enter a real card or submit twice.</p>
+    <p className="mt-3 break-words text-sm text-amber-900">Preview only, pending order {reference}. TEST CARDS ONLY. This action can initiate a Worldpay Try payment when enabled by the server. It does not confirm an order as paid. Do not enter a real card or submit twice.</p>
   </section>;
 }

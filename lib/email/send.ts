@@ -16,7 +16,7 @@ export async function sendOrderEmail(kind: EmailKind, order: EmailOrder, options
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json','Idempotency-Key':options.idempotencyKey },
-    body: JSON.stringify({ from: FROM, to: [draft.recipient], reply_to:'info@blingbeautyproducts.com', subject: settings.prefix+draft.subject,
+    body: JSON.stringify({ from: FROM, to: [draft.recipient], reply_to:'info@blingbeautyproducts.com', subject: (kind==='transport-test'?'[TEST] ':settings.prefix)+draft.subject,
       text:(options.environment==='try'?'TEST ONLY — no live order or real payment.\n\n':'')+draft.text }),
     cache: 'no-store',
     redirect:'error',

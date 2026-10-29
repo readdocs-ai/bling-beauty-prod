@@ -6,11 +6,13 @@ import {verifyAdminSession} from '@/lib/admin-session';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** Admin-only via middleware. Preview-only, fixed recipient, no order mutations. */
+/** Signed admin session, same-origin POST, fixed recipient, no order or payment mutations. */
 export async function POST(request: Request) {
   if(!await verifyAdminSession((await cookies()).get('bbp_admin')?.value??''))return NextResponse.json({error:'Unauthorised'},{status:401});
-  if (process.env.VERCEL_ENV !== 'preview') {
-    return NextResponse.json({ error: 'Email smoke test is restricted to Vercel Preview.' }, { status: 403 });
+  const environment=process.env.WORLDPAY_ENVIRONMENT;
+  if (!((process.env.VERCEL_ENV==='preview'&&environment==='try')||
+        (process.env.VERCEL_ENV==='production'&&environment==='live'))) {
+    return NextResponse.json({ error: 'Email test environment is not configured.' }, { status: 403 });
   }
   const origin = request.headers.get('origin');
   const expected = new URL(request.url).origin;
@@ -19,12 +21,12 @@ export async function POST(request: Request) {
   }
   try {
     const result = await sendOrderEmail('transport-test', {
-      reference: `EMAIL-TEST-${Date.now()}`,
+      reference: 'EMAIL-TRANSPORT-TEST',
       customerName: 'Test customer (no real order)',
       customerEmail: 'info@blingbeautyproducts.com',
       totalGBP: 130,
       items: [{ name: 'Email transport test only — no payment', quantity: 1 }],
-    },{environment:'try',idempotencyKey:`bling/email-smoke/${Math.floor(Date.now()/60000)}`});
+    },{environment,idempotencyKey:`bling/${environment}/email-smoke/${Math.floor(Date.now()/3600000)}`});
     return NextResponse.json({ ok: true, message: 'Resend accepted the test email. Check the business inbox and Resend Logs.', providerMessageId: result.id }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Email smoke test failed', error instanceof Error ? error.message : 'Unknown error');

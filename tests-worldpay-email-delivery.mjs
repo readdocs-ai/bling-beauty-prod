@@ -29,6 +29,10 @@ try{
  assert.equal(sent[0].options.headers['Idempotency-Key'],key);assert.equal(sent[0].options.redirect,'error');
  const payload=JSON.parse(sent[0].options.body);assert.match(payload.subject,/^\[TEST\]/);assert.match(payload.text,/no live order/);assert.equal(payload.reply_to,'info@blingbeautyproducts.com');
  await assert.rejects(sendOrderEmail('payment-confirmed',{...order,customerEmail:'stranger@example.com'},{environment:'try',idempotencyKey:key}));assert.equal(sent.length,1);
+ Object.assign(process.env,{VERCEL_ENV:'production',WORLDPAY_ENVIRONMENT:'live'});
+ await sendOrderEmail('transport-test',order,{environment:'live',idempotencyKey:'bling/live/email-smoke/synthetic'});
+ const liveSmoke=JSON.parse(sent[1].options.body);assert.match(liveSmoke.subject,/^\[TEST\]/);assert.equal(liveSmoke.to[0],'info@blingbeautyproducts.com');assert.match(liveSmoke.text,/No order was created and no payment was taken/);
+ Object.assign(process.env,env);
  globalThis.fetch=async()=>{throw Error('timeout');};await assert.rejects(sendOrderEmail('admin-alert',order,{environment:'try',idempotencyKey:key}));
 }finally{globalThis.fetch=savedFetch;for(const k of Object.keys(process.env))if(!(k in savedEnv))delete process.env[k];Object.assign(process.env,savedEnv);}
 const rows=mergeAdminOrders([{id:'stripe',amount_total:500,status:'paid',shipping_name:'Existing',created_at:'2026-10-25'}],[{id:'worldpay',reference:'BLING-'+id,amount_pence:13000,payment_environment:'try',customer:{name:'Alex',email:'x@example.invalid'},created_at:'2026-10-26'}]);

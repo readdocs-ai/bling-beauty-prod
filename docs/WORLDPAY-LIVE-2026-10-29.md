@@ -62,3 +62,9 @@ Known prior production deployment: `dpl_4TsgnALgN1rs8NKUEVeGjFv9VQ6o`. Review br
 - https://docs.worldpay.com/access/products/checkout/web
 - https://docs.worldpay.com/access/products/payments
 - https://docs.worldpay.com/access/products/events/signature
+
+## Support request and email diagnostic follow-up
+
+Worldpay support case 29407645 was submitted successfully; the portal states a response within 48 hours. The signed Live settlement event secret/key ID remain external requirements. Official Payment Queries documentation says settlement events are not yet available there, so query aggregation is not a verified substitute.
+
+The authenticated `/admin/email-test` control now supports Production/Live as well as Preview/Try. It sends a clearly labelled `[TEST]` transport email only to `info@blingbeautyproducts.com`; it creates no order or payment and makes no paid-order claim. Same-origin POST and a signed admin session are required. A fixed payload and environment-specific hourly provider idempotency key prevent repeated clicks from duplicating the test within the hour. Resend acceptance is distinct from inbox receipt. This does not validate the real paid-order email trigger.

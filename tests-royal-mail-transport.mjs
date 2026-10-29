@@ -14,15 +14,23 @@ globalThis.fetch=async(href,options)=>{
  if(href.endsWith('/carriers'))return Response.json(carriers);
  if(options.method==='GET')return exists?Response.json([{orderIdentifier:12345,orderReference:ref}]):new Response(null,{status:404});
  if(timeout)throw Error('synthetic timeout');
- const payload=JSON.parse(options.body);assert.equal(payload.items[0].sender.tradingName,'Bling Beauty Products');assert.equal('label' in payload.items[0],false);assert.deepEqual(payload.items[0].postageDetails,{carrierName:'Existing account carrier'});
+ const payload=JSON.parse(options.body);assert.equal(payload.items[0].sender.tradingName,'Bling Beauty Products');assert.equal('label' in payload.items[0],false);assert.deepEqual(payload.items[0].postageDetails,carriers.length?{carrierName:'Existing account carrier'}:undefined);
  return Response.json({successCount:1,errorsCount:0,createdOrders:[{orderIdentifier:12345,orderReference:ref}],failedOrders:[]});
 };
 try{
  assert.equal((await api.checkClickDropConnection()).connected,true);assert.equal(calls[0].href.endsWith('/carriers'),true);
  carriers=[];assert.deepEqual(await api.checkClickDropConnection(),{connected:true,carriers:[]});
  const postsBeforeEmpty=calls.filter(c=>c.options.method==='POST').length;
- await assert.rejects(api.prepareClickDropAccount({items:[{}]}),/no shipping carriers/);
+ const defaultPayload=await api.prepareClickDropAccount({items:[{orderReference:ref,sender:{tradingName:'Bling Beauty Products'}}]});
+ assert.equal('postageDetails' in defaultPayload.items[0],false);
  assert.equal(calls.filter(c=>c.options.method==='POST').length,postsBeforeEmpty);
+ assert.equal((await api.importClickDropOrder(defaultPayload)).orderIdentifier,'12345');
+ carriers=[{carrierName:'First'},{carrierName:'Second'}];
+ await assert.rejects(api.prepareClickDropAccount({items:[{}]}),/Choose the correct/);
+ carriers=[];process.env.ROYAL_MAIL_CARRIER_NAME='Unverified carrier';
+ await assert.rejects(api.prepareClickDropAccount({items:[{}]}),/Choose the correct/);
+ delete process.env.ROYAL_MAIL_CARRIER_NAME;
+ await assert.rejects(api.importClickDropOrder({items:[{...defaultPayload.items[0],postageDetails:{serviceCode:'FORBIDDEN'}}]}),/Invalid draft/);
  carriers=[{unexpected:'invalid'}];await assert.rejects(api.checkClickDropConnection(),/unexpected carrier response/);
  carriers=[{carrierName:'Existing account carrier'}];
  const payload=await api.prepareClickDropAccount({items:[{orderReference:ref,sender:{tradingName:'Bling Beauty Products'}}]});

@@ -46,4 +46,8 @@ For any ambiguous import, use the existing-order check instead of creating a sec
 
 ## Connection diagnostic follow-up
 
-The first user connection check reached the provider response validator but reported the combined empty/invalid carrier error. Separate empty arrays (authenticated HTTP success, no account carriers returned) from malformed responses. An empty carrier list does not authorise imports: preparation still fails before any durable claim or order POST. The admin dashboard now links directly to shipping. Live carrier availability and first draft import remain unverified.
+The first user connection check reached the provider response validator but reported the combined empty/invalid carrier error. Separate empty arrays (authenticated HTTP success, no account carriers returned) from malformed responses. Superseded by the OLP correction below: an empty carrier list is not itself an import failure. The admin dashboard now links directly to shipping. Live carrier availability and first draft import remain unverified.
+
+## OLP draft carrier correction
+
+User screenshots confirm Royal Mail OLP services and no separate Shipping carriers setting. The live read-only check successfully returned an empty carrier array. Royal Mail documentation requires carrierName for multi-carrier accounts, not every draft. Empty lists now omit postageDetails entirely and leave the draft carrier/service choice to Click & Drop. A single listed carrier is selected as before; multiple carriers or an explicitly configured unmatched carrier still block before claim. No postage service, labels, manifests or account settings are requested. Synthetic transport tests cover OLP draft creation with no carrier, multi-carrier ambiguity, unmatched configuration and forbidden service fields. First genuine paid-order import remains untested.

@@ -19,11 +19,13 @@ export async function checkClickDropConnection(){
 }
 export async function prepareClickDropAccount(payload:{items:any[]}){
  const account=await checkClickDropConnection();
- if(!account.carriers.length)throw Error('Royal Mail accepted the connection but returned no shipping carriers. Review Settings > Shipping carriers in Click & Drop before importing.');
- const chosen=process.env.ROYAL_MAIL_CARRIER_NAME?.trim()||(account.carriers.length===1?account.carriers[0]:null);
- if(!chosen||!account.carriers.includes(chosen))throw Error('Choose the correct shared-account carrier in ROYAL_MAIL_CARRIER_NAME before importing');
- // Account-configured carrier name only; no postage service or label generation.
- payload.items[0].postageDetails={carrierName:chosen};
+ const configured=process.env.ROYAL_MAIL_CARRIER_NAME?.trim();
+ const chosen=configured||(account.carriers.length===1?account.carriers[0]:undefined);
+ if((configured&&!account.carriers.includes(configured))||(!chosen&&account.carriers.length>1))throw Error('Choose the correct shared-account carrier in ROYAL_MAIL_CARRIER_NAME before importing');
+ // Carrier selection is required for multi-carrier accounts only. An empty list
+ // uses the provider default for the draft, without inventing a carrier or service.
+ if(chosen)payload.items[0].postageDetails={carrierName:chosen};
+ else delete payload.items[0].postageDetails;
  await new Promise(resolve=>setTimeout(resolve,600));return payload;
 }
 export async function findClickDropOrder(reference:string):Promise<RoyalMailResult|null>{
@@ -36,7 +38,7 @@ export async function findClickDropOrder(reference:string):Promise<RoyalMailResu
 export async function importClickDropOrder(payload:{items:any[]}):Promise<RoyalMailResult>{
  if(process.env.VERCEL_ENV!=='production'||process.env.BLING_ROYAL_MAIL_IMPORT_ENABLED!=='true')throw Error('Royal Mail imports are disabled');
  const item=payload.items[0];
- if(payload.items.length!==1||item?.sender?.tradingName!=='Bling Beauty Products'||item.label||!item.postageDetails||Object.keys(item.postageDetails).some(k=>k!=='carrierName')||typeof item.postageDetails.carrierName!=='string')throw Error('Invalid draft import');
+ if(payload.items.length!==1||item?.sender?.tradingName!=='Bling Beauty Products'||item.label||(item.postageDetails!==undefined&&(!item.postageDetails||Object.keys(item.postageDetails).some(k=>k!=='carrierName')||typeof item.postageDetails.carrierName!=='string'||!item.postageDetails.carrierName.trim())))throw Error('Invalid draft import');
  if(await findClickDropOrder(item.orderReference))throw Error('An order already exists in Click & Drop. Use Check existing import.');
  // Account rate limit is two calls/second; do not immediately POST after the lookup.
  await new Promise(resolve=>setTimeout(resolve,600));

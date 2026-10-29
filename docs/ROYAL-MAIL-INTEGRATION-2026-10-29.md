@@ -43,3 +43,7 @@ For any ambiguous import, use the existing-order check instead of creating a sec
 
 - https://api.parcel.royalmail.com/doc/v1/click-and-drop-api-v1.yaml
 - https://help.parcel.royalmail.com/hc/en-gb/articles/360011462338-Integrating-with-the-Click-Drop-API
+
+## Connection diagnostic follow-up
+
+The first user connection check reached the provider response validator but reported the combined empty/invalid carrier error. Separate empty arrays (authenticated HTTP success, no account carriers returned) from malformed responses. An empty carrier list does not authorise imports: preparation still fails before any durable claim or order POST. The admin dashboard now links directly to shipping. Live carrier availability and first draft import remain unverified.

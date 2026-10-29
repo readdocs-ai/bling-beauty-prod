@@ -14,11 +14,12 @@ async function request(path:string,body?:unknown){
 }
 export async function checkClickDropConnection(){
  const result=await request('/carriers');
- if(!Array.isArray(result)||!result.length||result.some(c=>typeof c?.carrierName!=='string'||!c.carrierName.trim()))throw Error('Royal Mail returned no valid account carriers');
+ if(!Array.isArray(result)||result.some(c=>typeof c?.carrierName!=='string'||!c.carrierName.trim()))throw Error('Royal Mail returned an unexpected carrier response. No orders were created.');
  return {connected:true,carriers:result.map(c=>c.carrierName)}; // No customer or other shop order data is read.
 }
 export async function prepareClickDropAccount(payload:{items:any[]}){
  const account=await checkClickDropConnection();
+ if(!account.carriers.length)throw Error('Royal Mail accepted the connection but returned no shipping carriers. Review Settings > Shipping carriers in Click & Drop before importing.');
  const chosen=process.env.ROYAL_MAIL_CARRIER_NAME?.trim()||(account.carriers.length===1?account.carriers[0]:null);
  if(!chosen||!account.carriers.includes(chosen))throw Error('Choose the correct shared-account carrier in ROYAL_MAIL_CARRIER_NAME before importing');
  // Account-configured carrier name only; no postage service or label generation.

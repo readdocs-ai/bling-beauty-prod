@@ -7,11 +7,11 @@ const savedFetch=globalThis.fetch,savedEnv={...process.env};
 const source=readFileSync('lib/royal-mail-click-drop.ts','utf8').replace("import 'server-only';",'').replaceAll("'./shipping/click-drop-policy.mjs'",JSON.stringify(pathToFileURL(process.cwd()+'/lib/shipping/click-drop-policy.mjs').href));
 const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
 const api=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
-const ref='BLING-'+'a'.repeat(32),calls=[];let exists=false,timeout=false;
+const ref='BLING-'+'a'.repeat(32),calls=[];let exists=false,timeout=false,carriers=[{carrierName:'Existing account carrier'}];
 Object.assign(process.env,{VERCEL_ENV:'production',ROYAL_MAIL_CLICK_DROP_API_KEY:'synthetic-key',BLING_ROYAL_MAIL_IMPORT_ENABLED:'true'});delete process.env.ROYAL_MAIL_CARRIER_NAME;
 globalThis.fetch=async(href,options)=>{
  calls.push({href,options});assert.ok(href.startsWith('https://api.parcel.royalmail.com/api/v1/'));assert.equal(options.headers.Authorization,'Bearer synthetic-key');assert.equal(options.redirect,'error');
- if(href.endsWith('/carriers'))return Response.json([{carrierName:'Existing account carrier'}]);
+ if(href.endsWith('/carriers'))return Response.json(carriers);
  if(options.method==='GET')return exists?Response.json([{orderIdentifier:12345,orderReference:ref}]):new Response(null,{status:404});
  if(timeout)throw Error('synthetic timeout');
  const payload=JSON.parse(options.body);assert.equal(payload.items[0].sender.tradingName,'Bling Beauty Products');assert.equal('label' in payload.items[0],false);assert.deepEqual(payload.items[0].postageDetails,{carrierName:'Existing account carrier'});
@@ -19,6 +19,12 @@ globalThis.fetch=async(href,options)=>{
 };
 try{
  assert.equal((await api.checkClickDropConnection()).connected,true);assert.equal(calls[0].href.endsWith('/carriers'),true);
+ carriers=[];assert.deepEqual(await api.checkClickDropConnection(),{connected:true,carriers:[]});
+ const postsBeforeEmpty=calls.filter(c=>c.options.method==='POST').length;
+ await assert.rejects(api.prepareClickDropAccount({items:[{}]}),/no shipping carriers/);
+ assert.equal(calls.filter(c=>c.options.method==='POST').length,postsBeforeEmpty);
+ carriers=[{unexpected:'invalid'}];await assert.rejects(api.checkClickDropConnection(),/unexpected carrier response/);
+ carriers=[{carrierName:'Existing account carrier'}];
  const payload=await api.prepareClickDropAccount({items:[{orderReference:ref,sender:{tradingName:'Bling Beauty Products'}}]});
  assert.equal((await api.importClickDropOrder(payload)).orderIdentifier,'12345');
  assert.match(calls.find(c=>c.options.method==='GET'&&c.href.includes('/orders/')).href,/%22BLING-[a-f0-9]{32}%22$/);

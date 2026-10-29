@@ -52,6 +52,7 @@ export default async function AdminPage() {
 
       <div className="mt-6 rounded-2xl border border-soft-black/10 bg-white p-5"><h2 className="font-display text-xl">New orders switch</h2><p className="mt-2 font-semibold">{ordering.configured ? (ordering.suspended ? "Suspended" : "Accepting new orders") : "Not configured — blocked"}</p><Link href="/admin/order-settings" className="mt-3 inline-block rounded-xl bg-soft-black px-4 py-2 text-sm text-white">Manage new orders</Link></div>
       <p className="mt-5"><Link href="/admin/checkout-operations" className="font-semibold underline">Checkout operations and email delivery</Link></p>
+      <p className="mt-4"><Link href="/admin/shipping" className="font-semibold underline">Royal Mail shipping — connection and paid-order imports</Link></p>
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-soft-black/10 bg-white p-5"><div className="text-sm text-soft-black/60">Products</div><div className="mt-2 font-display text-3xl">{products.length}</div></div>
         <div className="rounded-2xl border border-soft-black/10 bg-white p-5"><div className="text-sm text-soft-black/60">Recent orders</div><div className="mt-2 font-display text-3xl">{ordersAvailable ? orders.length : "—"}</div><div className="mt-1 text-xs text-soft-black/60">Latest 8 records, not lifetime total</div></div>

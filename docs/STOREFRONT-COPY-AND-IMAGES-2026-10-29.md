@@ -12,3 +12,7 @@ User requested customer-facing copy throughout the storefront, WhatsApp 07459 67
 ## Outstanding production work
 
 Worldpay signed settlement credentials and genuine live payment remain outstanding. Paid-order customer/admin email delivery and the first Royal Mail OLP draft import must be verified against that payment. The legal trading identity and postal contact address still need owner confirmation for the public business details; removing developer notes does not supply those facts. Product contents, stock, fulfilment timing and supplier details should be confirmed by the owner before accepting orders. Payment guards remain in place.
+
+## Live verification follow-up
+
+Production build READY at c790036; live browser review confirmed clean collection crops and customer copy, updated WhatsApp destinations and a £130 collection added to the basket without initiating payment. Fixed the transient checkout loading label so live customers cannot briefly see Preview diagnostics before configuration loads. The explicit Try environment retains its test-only messaging.

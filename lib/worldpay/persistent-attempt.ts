@@ -28,9 +28,9 @@ export async function claimPendingPayment(reference: string) {
   return { claim, attempt };
 }
 
-export async function storeVerifiedProviderProgress(reference: string, claim: string, response: ProviderReply) {
+export async function storeVerifiedProviderProgress(reference: string, claim: string, response: ProviderReply, environment:'try'|'live'='try') {
   if (!REFERENCE.test(reference) || !/^[0-9a-f-]{36}$/.test(claim)) throw new Error('Invalid claim');
-  const checked = checkedProviderResult(response.httpStatus,response.data);
+  const checked = checkedProviderResult(response.httpStatus,response.data,environment);
   // Never trust an arbitrary caller-supplied outcome/actions object.
   const outcome = checked.outcome;
   const actions = checked.actions;

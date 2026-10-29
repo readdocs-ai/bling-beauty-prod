@@ -9,7 +9,7 @@ const tests = [
   ['claim compare-and-swap', gateway.includes("rpc('bling_claim_payment'")],
   ['persist only claimed',sql.includes('payment_claim_id=p_claim') && sql.includes("status='payment_processing'")],
   ['no paid finaliser',!gateway.includes('bling_finalise_verified_payment')],
-  ['revalidated provider response',gateway.includes('checkedProviderResult(response.httpStatus,response.data)')],
+  ['revalidated provider response',gateway.includes('checkedProviderResult(response.httpStatus,response.data,environment)')],
   ['no automatic retry',gateway.includes('do not retry payment')],
   ['preview-only status',api.includes("process.env.VERCEL_ENV !== 'preview'")],
   ['no sensitive fields returned',gateway.includes('providerStage:') && !api.includes('payment_claim_id')],

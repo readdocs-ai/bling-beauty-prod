@@ -1,0 +1,1 @@
+{"crons":[{"path":"/api/worldpay/recover","schedule":"0 6 * * *"}]}

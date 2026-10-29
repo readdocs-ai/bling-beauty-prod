@@ -10,7 +10,7 @@ type Stage = 'device_data' | 'challenge';
 type ProviderReply = { httpStatus:number; data:Record<string,unknown>; correlationId:string|null };
 
 /** Claim one 3DS action atomically. No automatic retries; claim BEFORE any Worldpay POST. */
-export async function claim3dsContinuation(reference:string, paymentClaim:string, ownershipSecret:string, stage:Stage) {
+export async function claim3dsContinuation(reference:string, paymentClaim:string, ownershipSecret:string, stage:Stage, environment:'try'|'live'='try') {
   if (!REF.test(reference) || !UUID.test(paymentClaim) || !SECRET.test(ownershipSecret) ||
       !['device_data','challenge'].includes(stage)) return null;
   const continuationClaim = randomUUID();
@@ -21,13 +21,13 @@ export async function claim3dsContinuation(reference:string, paymentClaim:string
   });
   if (error) throw new Error('3DS claim migration unavailable');
   if (!data || typeof data.action !== 'string') return null;
-  const action = safeIntegratedAction(data.action, stage === 'device_data' ? 'device':'challenge');
+  const action = safeIntegratedAction(data.action, stage === 'device_data' ? 'device':'challenge',environment);
   return { continuationClaim, action };
 }
 
 /** Store only a response to the matching claimed step. Never mark an order paid here. */
-export async function record3dsContinuation(reference:string,paymentClaim:string,continuationClaim:string,response:ProviderReply) {
-  const checked = checkedProviderResult(response.httpStatus,response.data);
+export async function record3dsContinuation(reference:string,paymentClaim:string,continuationClaim:string,response:ProviderReply, environment:'try'|'live'='try') {
+  const checked = checkedProviderResult(response.httpStatus,response.data,environment);
   const { data, error } = await supabaseAdmin.rpc('bling_store_continuation_progress', {
     p_reference:reference, p_payment_claim:paymentClaim, p_continuation_claim:continuationClaim,
     p_outcome:checked.outcome, p_actions:checked.actions, p_correlation:response.correlationId,

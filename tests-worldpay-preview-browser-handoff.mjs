@@ -3,8 +3,10 @@ import { readFileSync } from 'node:fs';
 const fields=readFileSync('components/worldpay/preview-fields.tsx','utf8');
 const cart=readFileSync('app/cart/page.tsx','utf8');
 const route=readFileSync('app/api/worldpay/preview-initiate/route.ts','utf8');
-for(const text of ['ownershipSecret: string','typeof sessionState !== "string"','"/api/worldpay/preview-initiate"','ownershipSecret, sessionHref: sessionState','No auto-retry','Do not retry this payment','TEST CARDS ONLY','No payment request was sent']) assert.ok(fields.includes(text),text);
+for(const text of ['ownershipSecret: string','typeof sessionState !== "string"',"endpoint('initiate')",'ownershipSecret, sessionHref: sessionState','No auto-retry','Do not retry this payment','TEST CARDS ONLY','No payment request was sent']) assert.ok(fields.includes(text),text);
 assert.match(cart,/ownershipSecret=\{previewOwnershipSecret\}/);
 for(const text of ["process.env.VERCEL_ENV !== 'preview'", "process.env.WORLDPAY_ENVIRONMENT !== 'try'", "BLING_PREVIEW_PAYMENT_INITIATION", "BLING_PREVIEW_PAYMENT_OWNERSHIP_VERIFIED", "claimOwnedPreviewAttempt", "storeVerifiedProviderProgress"]) assert.ok(route.includes(text),text);
 assert.ok(!fields.includes('console.log('));
 console.log('Preview browser-to-owned-initiation structural checks passed (16 assertions). No provider or database calls exercised.');
+
+assert.ok(fields.includes("isLive?'':'preview-'"));

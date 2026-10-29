@@ -16,12 +16,12 @@ export type WorldpayActions = {
 
 export function safeIntegratedAction(
   href: unknown,
-  kind?: WorldpayActionKind
+  kind?: WorldpayActionKind, environment?: 'try'|'live'
 ): string;
 
 export function checkedProviderResult(
   status: number,
-  raw: unknown
+  raw: unknown, environment?: 'try'|'live'
 ): {
   outcome: string;
   actions: WorldpayActions;
@@ -36,7 +36,7 @@ export function assertMatchingProviderPayment(
 ): boolean;
 export function checkedProviderQueryResult(
   status: number,
-  raw: unknown
+  raw: unknown, environment?: 'try'|'live'
 ): {
   outcome: string;
   actions: WorldpayActions;

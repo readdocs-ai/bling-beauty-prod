@@ -1,3 +1,4 @@
+import {signingKeysConfigured} from '@/lib/worldpay/live-policy.mjs';
 import {NextResponse,after} from 'next/server';
 import {supabaseAdmin} from '@/lib/supabase';
 import {boundedEventBody,verifyEventSignature,parseSettledEvent} from '@/lib/worldpay/settlement-events.mjs';
@@ -7,17 +8,18 @@ export const dynamic='force-dynamic';
 export const maxDuration=60;
 const headers={'Cache-Control':'no-store'};
 export async function POST(request:Request){
- // Preview-only until the complete Live release is separately configured and approved.
- if(process.env.VERCEL_ENV!=='preview'||process.env.WORLDPAY_ENVIRONMENT!=='try'||process.env.BLING_PREVIEW_SETTLEMENT_EVENTS!=='true')
-  return NextResponse.json({error:'Unavailable'},{status:404,headers});
+ const environment=process.env.WORLDPAY_ENVIRONMENT;
+ const enabled=(environment==='try'&&process.env.VERCEL_ENV==='preview'&&process.env.BLING_PREVIEW_SETTLEMENT_EVENTS==='true')||
+  (environment==='live'&&process.env.VERCEL_ENV==='production'&&process.env.BLING_LIVE_SETTLEMENT_EVENTS==='true');
+ if(!enabled)return NextResponse.json({error:'Unavailable'},{status:404,headers});
  let keys:Record<string,string>;
- try{keys=JSON.parse(process.env.WORLDPAY_EVENT_SIGNING_KEYS??'');if(!keys||typeof keys!=='object'||Array.isArray(keys)||!Object.keys(keys).length)throw Error();}
+ try{if(!signingKeysConfigured(process.env.WORLDPAY_EVENT_SIGNING_KEYS))throw Error();keys=JSON.parse(process.env.WORLDPAY_EVENT_SIGNING_KEYS??'');if(!keys||typeof keys!=='object'||Array.isArray(keys)||!Object.keys(keys).length)throw Error();}
  catch{return NextResponse.json({error:'Event verification unavailable'},{status:503,headers});}
  let raw:Buffer;
  try{raw=await boundedEventBody(request);}catch{return NextResponse.json({error:'Invalid body'},{status:400,headers});}
  if(!verifyEventSignature(raw,request.headers.get('event-signature'),keys))return NextResponse.json({error:'Invalid signature'},{status:400,headers});
  try{
-  const event=parseSettledEvent(raw,'try');
+  const event=parseSettledEvent(raw,environment);
   if(!event)return NextResponse.json({received:true},{headers});
   const {error}=await supabaseAdmin.from('bling_worldpay_settlement_events').insert(event);
   if(error&&error.code!=='23505')throw Error('Inbox unavailable');

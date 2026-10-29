@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import {liveReadiness} from '@/lib/worldpay/live-policy.mjs';
 import {supabaseAdmin} from '@/lib/supabase';
 import SettlementRecovery from '@/components/admin/settlement-recovery';
 export const dynamic='force-dynamic';
@@ -8,7 +9,8 @@ export default async function CheckoutOperations(){
   supabaseAdmin.from('bling_paid_order_jobs').select('order_id,kind,status,last_error').in('kind',['customer_email','admin_email']).limit(60),
   supabaseAdmin.from('store_settings').select('orders_suspended').eq('id',1).maybeSingle(),
  ]);
- const checks=[['Live ordering suspended',settings.data?.orders_suspended===true],['Worldpay event signatures configured',!!process.env.WORLDPAY_EVENT_SIGNING_KEYS],
+ const live=liveReadiness(process.env);
+ const checks=[...Object.entries(live.checks).map(([name,ok])=>[`Live ${name}`,ok] as const),['Live ordering suspended',settings.data?.orders_suspended===true],['Worldpay event signatures configured',!!process.env.WORLDPAY_EVENT_SIGNING_KEYS],
   ['Preview settlement processing enabled',process.env.BLING_PREVIEW_SETTLEMENT_EVENTS==='true'],['Resend configured',!!process.env.RESEND_API_KEY],
   ['Order email delivery enabled',process.env.BLING_ORDER_EMAILS_ENABLED==='true'],['Test recipient list configured',!!process.env.BLING_TEST_EMAIL_RECIPIENTS],
   ['Automatic settlement for new test attempts enabled',process.env.BLING_PREVIEW_AUTO_SETTLEMENT==='true']] as const;

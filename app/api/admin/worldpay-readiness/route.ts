@@ -8,6 +8,6 @@ export async function GET() {
   return NextResponse.json({
     provider: 'Worldpay',
     checkoutAvailable: status.liveCheckoutEnabled,
-    message: 'Checkout is not yet activated. Worldpay verification is pending.',
+    message: status.liveCheckoutEnabled?'Payment configuration present.':'Card payments are not yet available.',
   }, { headers: { 'Cache-Control': 'no-store' } });
 }

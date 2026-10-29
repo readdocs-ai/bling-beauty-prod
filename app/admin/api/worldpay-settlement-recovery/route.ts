@@ -7,7 +7,8 @@ export async function POST(request:Request){
  const session=(await cookies()).get('bbp_admin')?.value??'';
  if(!await verifyAdminSession(session)||request.headers.get('origin')!==new URL(request.url).origin)
   return NextResponse.json({error:'Unauthorised'},{status:403});
- if(process.env.VERCEL_ENV!=='preview'||process.env.BLING_PREVIEW_SETTLEMENT_EVENTS!=='true')
+ if(!((process.env.VERCEL_ENV==='preview'&&process.env.WORLDPAY_ENVIRONMENT==='try'&&process.env.BLING_PREVIEW_SETTLEMENT_EVENTS==='true')||
+ (process.env.VERCEL_ENV==='production'&&process.env.WORLDPAY_ENVIRONMENT==='live'&&process.env.BLING_LIVE_SETTLEMENT_EVENTS==='true')))
   return NextResponse.json({error:'Unavailable'},{status:404});
  try{return NextResponse.json({outcomes:await recoverSettlementInbox()},{headers:{'Cache-Control':'no-store'}});}
  catch{return NextResponse.json({error:'Recovery unavailable'},{status:503});}

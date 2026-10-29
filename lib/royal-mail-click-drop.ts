@@ -1,49 +1,43 @@
-/** Server-only Royal Mail Click & Drop order-import adapter.
- * No postage is purchased here. Use only after payment is independently verified.
- */
+/** Server-only Click & Drop draft import. Never requests postage, labels or manifests. */
 import 'server-only';
-
-const API_BASE = 'https://api.parcel.royalmail.com/api/v1';
-export type ShippingOrder = {
-  orderReference: string;
-  recipient: { fullName: string; email: string; phone?: string; address1: string; address2?: string; city: string; postcode: string; countryCode: 'GB' };
-  lines: { name: string; quantity: number; unitPriceGBP: number }[];
-  /** Measured total packed parcel weight; never guess a default. */
-  parcelWeightGrams: number;
-};
-
-export function prepareClickDropOrder(order: ShippingOrder) {
-  if (!/^BLING-[A-Za-z0-9-]{4,64}$/.test(order.orderReference)) throw new Error('Invalid Bling Beauty reference');
-  if (!order.recipient.fullName.trim() || !order.recipient.address1.trim() || !order.recipient.city.trim() || !/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(order.recipient.postcode)) throw new Error('Incomplete UK delivery address');
-  if (!Number.isSafeInteger(order.parcelWeightGrams) || order.parcelWeightGrams < 1 || order.parcelWeightGrams > 30000) throw new Error('A valid measured parcel weight is required');
-  if (!order.lines.length || order.lines.some(line => !line.name.trim() || !Number.isInteger(line.quantity) || line.quantity < 1 || !Number.isFinite(line.unitPriceGBP) || line.unitPriceGBP < 0)) throw new Error('Invalid order lines');
-  return {
-    orderReference: order.orderReference,
-    recipient: {
-      address: {
-        fullName: order.recipient.fullName,
-        addressLine1: order.recipient.address1,
-        addressLine2: order.recipient.address2 || undefined,
-        city: order.recipient.city,
-        postcode: order.recipient.postcode.toUpperCase(),
-        countryCode: 'GB',
-      },
-      emailAddress: order.recipient.email,
-      phoneNumber: order.recipient.phone || undefined,
-    },
-    packages: [{ weightInGrams: order.parcelWeightGrams }],
-    orderLines: order.lines.map(line => ({ name: line.name, quantity: line.quantity, unitPrice: line.unitPriceGBP })),
-    tradingName: 'Bling Beauty Products',
-  };
+import {checkedRoyalMailCreation,checkedRoyalMailOrder,type RoyalMailResult} from './shipping/click-drop-policy.mjs';
+export {prepareRoyalMailDraft as prepareClickDropOrder} from './shipping/click-drop-policy.mjs';
+const BASE='https://api.parcel.royalmail.com/api/v1';
+function key(){const value=process.env.ROYAL_MAIL_CLICK_DROP_API_KEY?.trim();if(!value)throw Error('Royal Mail API key is not configured');return value;}
+export function clickDropConfigured(){return !!process.env.ROYAL_MAIL_CLICK_DROP_API_KEY?.trim();}
+async function request(path:string,body?:unknown){
+ const response=await fetch(BASE+path,{method:body?'POST':'GET',headers:{Authorization:`Bearer ${key()}`,Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},
+  ...(body?{body:JSON.stringify(body)}:{}),redirect:'error',cache:'no-store',signal:AbortSignal.timeout(15000)});
+ if(response.status===404&&!body)return null;
+ if(!response.ok)throw Error(`Royal Mail returned HTTP ${response.status}. Review Click & Drop before any retry.`);
+ return response.json();
 }
-
-/** Credential check only; no request made, no order imported. */
-export function clickDropConfigured() {
-  return Boolean(process.env.ROYAL_MAIL_CLICK_DROP_API_KEY?.trim());
+export async function checkClickDropConnection(){
+ const result=await request('/carriers');
+ if(!Array.isArray(result)||!result.length||result.some(c=>typeof c?.carrierName!=='string'||!c.carrierName.trim()))throw Error('Royal Mail returned no valid account carriers');
+ return {connected:true,carriers:result.map(c=>c.carrierName)}; // No customer or other shop order data is read.
 }
-
-/** Royal Mail order import is deliberately gated until payload mapping and weight are verified. */
-export async function importClickDropOrder(_order: ShippingOrder): Promise<never> {
-  void API_BASE;
-  throw new Error('Royal Mail import disabled until account-specific API payload, trading name and parcel weights are validated');
+export async function prepareClickDropAccount(payload:{items:any[]}){
+ const account=await checkClickDropConnection();
+ const chosen=process.env.ROYAL_MAIL_CARRIER_NAME?.trim()||(account.carriers.length===1?account.carriers[0]:null);
+ if(!chosen||!account.carriers.includes(chosen))throw Error('Choose the correct shared-account carrier in ROYAL_MAIL_CARRIER_NAME before importing');
+ // Account-configured carrier name only; no postage service or label generation.
+ payload.items[0].postageDetails={carrierName:chosen};
+ await new Promise(resolve=>setTimeout(resolve,600));return payload;
+}
+export async function findClickDropOrder(reference:string):Promise<RoyalMailResult|null>{
+ if(!/^BLING-[a-f0-9]{32}$/.test(reference))throw Error('Invalid Royal Mail reference');
+ const result=await request(`/orders/${encodeURIComponent('"'+reference+'"')}`);
+ if(result===null||Array.isArray(result)&&result.length===0)return null;
+ if(!Array.isArray(result)||result.length!==1)throw Error('Royal Mail reference is ambiguous');
+ return checkedRoyalMailOrder(result[0],reference);
+}
+export async function importClickDropOrder(payload:{items:any[]}):Promise<RoyalMailResult>{
+ if(process.env.VERCEL_ENV!=='production'||process.env.BLING_ROYAL_MAIL_IMPORT_ENABLED!=='true')throw Error('Royal Mail imports are disabled');
+ const item=payload.items[0];
+ if(payload.items.length!==1||item?.sender?.tradingName!=='Bling Beauty Products'||item.label||!item.postageDetails||Object.keys(item.postageDetails).some(k=>k!=='carrierName')||typeof item.postageDetails.carrierName!=='string')throw Error('Invalid draft import');
+ if(await findClickDropOrder(item.orderReference))throw Error('An order already exists in Click & Drop. Use Check existing import.');
+ // Account rate limit is two calls/second; do not immediately POST after the lookup.
+ await new Promise(resolve=>setTimeout(resolve,600));
+ return checkedRoyalMailCreation(await request('/orders',payload),item.orderReference);
 }

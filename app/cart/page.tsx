@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { CollectionImage } from "@/components/luxury/collection-image";
 import WorldpayPreviewFields from "@/components/worldpay/preview-fields";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -190,7 +191,7 @@ export default function CartPage() {
             {items.map((it) => (
               <div key={it.slug} className="flex flex-col gap-4 rounded-2xl border border-soft-black/10 bg-white/60 p-5 shadow-soft sm:flex-row sm:items-center">
                 <div className="relative h-24 w-full overflow-hidden rounded-2xl sm:h-24 sm:w-32">
-                  {it.image ? <Image src={it.image} alt={it.name} fill className="object-cover" /> : <div className="grid h-full w-full place-items-center text-xs text-soft-black/60">No image</div>}
+                  {it.image?.startsWith("/products/bling-collections/") ? <CollectionImage src={it.image} alt={it.name} sizes="(max-width: 640px) 100vw, 128px" compact /> : it.image ? <Image src={it.image} alt={it.name} fill className="object-cover" /> : <div className="grid h-full w-full place-items-center text-xs text-soft-black/60">No image</div>}
                 </div>
 
                 <div className="flex-1">

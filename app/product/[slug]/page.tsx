@@ -77,7 +77,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug?:
             </div>
 
             <div className="mt-6 grid gap-3 text-xs leading-relaxed text-cocoa/80">
-              <p>Secure online checkout is being prepared. Contact our team for assistance with your order.</p>
+              <p>Questions about this product or your order? Contact our team for personal assistance.</p>
               <p>Avoid direct contact with eyes and discontinue use if irritation occurs.</p>
             </div>
           </div>

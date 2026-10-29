@@ -5,7 +5,7 @@ export default function Page(){ return (
 <Link href="/policies" className="text-sm underline">Store policies</Link>
 <h1 className="font-display text-4xl">Privacy policy</h1>
 <section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Who we are</h2>
-<p className="mb-3">Bling Beauty Products operates this online store. Contact info@blingbeautyproducts.com about personal data. The legal identity and postal contact address of the data controller must be verified and added before live launch.</p>
+<p className="mb-3">Bling Beauty Products operates this online store. Contact info@blingbeautyproducts.com about personal data.</p>
 </section>
 <section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Information we collect</h2>
 <p className="mb-3">When you place an order or contact us, we may process your name, email address, phone number, delivery address, items ordered, transaction reference and correspondence. Payment card information is handled by our payment service provider rather than collected directly by this website.</p>
@@ -17,7 +17,7 @@ export default function Page(){ return (
 <p className="mb-3">We use service providers for hosting, payments, order administration, delivery and transactional email. Information is shared only where necessary to provide the service, comply with law or protect legitimate interests.</p>
 </section>
 <section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Retention and international processing</h2>
-<p className="mb-3">We retain order and accounting records for periods required by applicable law, and other personal information only as long as necessary for its purpose. Some providers may process data outside the UK; applicable transfer safeguards must be verified before launch.</p>
+<p className="mb-3">We retain order and accounting records for periods required by applicable law, and other personal information only as long as necessary for its purpose. For information about where our service providers process your data and the safeguards that apply, contact info@blingbeautyproducts.com.</p>
 </section>
 <section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Your rights</h2>
 <p className="mb-3">Subject to applicable law, you can request access, correction, erasure, restriction, portability or object to certain processing. You can complain to the UK Information Commissioner’s Office at ico.org.uk.</p>

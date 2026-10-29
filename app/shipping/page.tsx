@@ -5,13 +5,13 @@ export default function Page(){ return (
 <Link href="/policies" className="text-sm underline">Store policies</Link>
 <h1 className="font-display text-4xl">Delivery information</h1>
 <section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Delivery area</h2>
-<p className="mb-3">Our current checkout is configured for addresses in the United Kingdom. Please contact us before ordering if you need delivery outside the UK.</p>
+<p className="mb-3">We deliver to addresses in the United Kingdom. Please contact us before ordering if you need delivery outside the UK.</p>
 </section>
 <section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Delivery charges</h2>
-<p className="mb-3">The store currently advertises free UK delivery. Confirm that this matches the final checkout pricing before launch.</p>
+<p className="mb-3">Standard UK delivery is free.</p>
 </section>
 <section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Dispatch and delivery times</h2>
-<p className="mb-3">Delivery estimates must be confirmed against the fulfilment service before launch. We will provide available tracking or dispatch updates where supported.</p>
+<p className="mb-3">For an estimated delivery date, contact our team with the collection you would like to order. If your order has already been dispatched, please include your order reference so we can help you check its progress.</p>
 </section>
 <section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Delivery problems</h2>
 <p className="mb-3">If a parcel is delayed, damaged or missing, contact info@blingbeautyproducts.com with your order reference. Your statutory rights remain unaffected.</p>

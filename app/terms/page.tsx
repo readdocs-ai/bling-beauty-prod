@@ -6,7 +6,7 @@ export default function Page(){ return (
 <h1 className="font-display text-4xl">Terms and conditions</h1>
 <section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">About these terms</h2>
 <p className="mb-3">These terms apply to purchases from Bling Beauty Products through this website. Contact us before ordering if you need clarification.</p>
-<p className="mb-3">The business legal name, registered or trading address and VAT details (where applicable) must be verified and published before taking live orders.</p>
+<p className="mb-3">For questions about our business, products or these terms, email info@blingbeautyproducts.com.</p>
 </section>
 <section className="rounded-2xl border border-[#e6d7c8] bg-white p-6 leading-7"><h2 className="mb-3 text-xl font-semibold">Products and prices</h2>
 <p className="mb-3">Product descriptions and prices are shown in pounds sterling. Availability may change. We may decline an order where a product is unavailable or a price is clearly incorrect, and will refund any payment taken for an unfulfilled order.</p>

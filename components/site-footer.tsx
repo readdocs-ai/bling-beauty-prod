@@ -42,7 +42,7 @@ export function SiteFooter() {
             <span>Need assistance? Get in touch</span>
             <span className="text-xs text-ivory/50">Contact us for help with your order.</span>
           <a href="mailto:info@blingbeautyproducts.com" className="hover:text-tangerine">info@blingbeautyproducts.com</a>
-            <a href="https://wa.me/447429098887" target="_blank" rel="noopener noreferrer" className="hover:text-tangerine">WhatsApp support</a>
+            <a href="https://wa.me/447459676630" target="_blank" rel="noopener noreferrer" className="hover:text-tangerine">WhatsApp support</a>
           </div>
         </div>
       </div>

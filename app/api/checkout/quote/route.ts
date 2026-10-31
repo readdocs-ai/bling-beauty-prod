@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const lines = [...quantities].map(([slug, quantity]) => {
       const product = products.get(slug)!;
       const unitPence = Math.round(product.sellingPrice * 100);
-      return { slug, name: product.name, quantity, unitPence, lineTotalPence: unitPence * quantity };
+      return { slug, name: `${product.brand} ${product.name}`, quantity, unitPence, lineTotalPence: unitPence * quantity };
     });
     const subtotalPence = lines.reduce((total, line) => total + line.lineTotalPence, 0);
     return NextResponse.json({ currency: "GBP", lines, subtotalPence, shippingPence: 0, totalPence: subtotalPence, paymentEnabled: false, note: "Quotation only. Free UK delivery; payments are not available yet." }, { headers: { "Cache-Control": "no-store" } });

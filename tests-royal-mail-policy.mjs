@@ -4,6 +4,8 @@ const reference='BLING-aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
 const order={reference,status:'paid',payment_environment:'live',provider_payment_id:'pay_fixture',provider_event_id:'event_fixture',verified_at:'2026-10-29',currency:'GBP',amount_pence:13000,created_at:'2026-10-29T01:00:00Z',customer:{name:'Synthetic Customer',email:'customer@example.invalid'},shipping:{address1:'Synthetic Test Address',city:'London',postcode:'sw1a 1aa',country:'GB'}};
 const packing={weightGrams:500,taxPence:2000,packageFormat:'smallParcel'};
 const payload=prepareRoyalMailDraft(order,packing),item=payload.items[0];
+assert.deepEqual(item.billing.address,item.recipient.address);assert.notEqual(item.billing.address,item.recipient.address);assert.equal(item.billing.emailAddress,order.customer.email);
+const livePacking=prepareRoyalMailDraft(order,{weightGrams:2000,taxPence:0,packageFormat:'smallParcel'}).items[0];assert.equal(livePacking.packages[0].weightInGrams,2000);assert.equal(livePacking.orderTax,0);assert.equal(livePacking.shippingCostCharged,0);assert.equal(livePacking.total,130);
 assert.equal(item.orderReference.length,38);assert.equal(item.orderReference,'BLING-'+reference.slice(6).replaceAll('-',''));
 assert.equal(item.sender.tradingName,'Bling Beauty Products');assert.equal(item.subtotal,110);assert.equal(item.orderTax,20);assert.equal(item.total,130);assert.equal(item.shippingCostCharged,0);assert.equal(item.recipient.address.postcode,'SW1A 1AA');assert.deepEqual(item.packages,[{weightInGrams:500,packageFormatIdentifier:'smallParcel'}]);
 for(const field of ['label','postageDetails','orderLines','tradingName'])assert.equal(field in item,false);

@@ -7,6 +7,10 @@ export async function GET(){
  const environment=process.env.VERCEL_ENV==='preview'&&process.env.WORLDPAY_ENVIRONMENT==='try'?'try':'live';
  let available=false;
  if(environment==='try')available=previewReadiness(process.env).readyForPaymentTesting;
- else if(liveReadiness(process.env).ready){const state=await getOrderingState();available=state.configured&&!state.suspended;}
+ else {
+  const readiness=liveReadiness(process.env);
+  if(readiness.ready){const state=await getOrderingState();available=state.configured&&!state.suspended;}
+  else console.warn('Bling Live checkout readiness',readiness.checks); // Booleans only; never configuration values or credentials.
+ }
  return NextResponse.json({environment,available},{headers:{'Cache-Control':'no-store'}});
 }

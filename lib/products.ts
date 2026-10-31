@@ -1,5 +1,8 @@
 import { supabasePublic } from "@/lib/supabase";
 import type { Product } from "@/lib/product-types";
+import { luxuryItems } from "@/lib/luxury-catalogue";
+
+const approvedSlugs = new Set(luxuryItems.map((item) => item.slug));
 
 export async function listProducts() {
   const { data, error } = await supabasePublic
@@ -9,10 +12,11 @@ export async function listProducts() {
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return ((data ?? []) as Product[]).filter((product) => product.slug?.startsWith("bling-"));
+  return ((data ?? []) as Product[]).filter((product) => approvedSlugs.has(product.slug));
 }
 
 export async function getProductBySlug(slug: string) {
+  if (!approvedSlugs.has(slug)) return null;
   const { data, error } = await supabasePublic
     .from("products")
     .select("*")
@@ -21,6 +25,5 @@ export async function getProductBySlug(slug: string) {
     .maybeSingle();
 
   if (error) throw error;
-  if (!slug.startsWith("bling-")) return null;
   return (data ?? null) as Product | null;
 }

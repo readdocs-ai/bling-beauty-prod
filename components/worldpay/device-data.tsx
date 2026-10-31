@@ -1,28 +1,24 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { parseDeviceData } from "@/lib/worldpay/device-data.mjs";
-const TRUSTED_ORIGIN = 'https://centinelapistag.cardinalcommerce.com';
-/** Only the Worldpay Try Cardinal frame can supply a successful DDC reference. */
-export default function WorldpayDeviceData({deviceData,onComplete}:{deviceData:unknown;onComplete:(reference:string)=>void}) {
-  const valid = parseDeviceData(deviceData);
+import { parseEnvironmentDeviceData,deviceDataCompletion } from "@/lib/worldpay/device-data.mjs";
+/** Only the matching Live/Try Cardinal frame can supply the DDC reference. */
+export default function WorldpayDeviceData({deviceData,onComplete,environment='try'}:{deviceData:unknown;onComplete:(reference:string)=>void;environment?:'try'|'live'}) {
+  const valid = parseEnvironmentDeviceData(deviceData,environment);
   const form = useRef<HTMLFormElement>(null);
   const [started,setStarted] = useState(false);
   const completed = useRef(false);
   useEffect(()=>{
     if (!valid) return;
     const receive=(event:MessageEvent)=>{
-      if (event.origin!==TRUSTED_ORIGIN || completed.current || event.source !== document.querySelector<HTMLIFrameElement>('iframe[name=bling-worldpay-ddc-frame]')?.contentWindow) return;
-      let data:unknown=event.data;
-      if (typeof data==='string') {try {data=JSON.parse(data);}catch{return;}}
-      if (!data || typeof data!=='object') return;
-      const msg=data as Record<string,unknown>;
-      if (msg.MessageType!=='profile.completed' || msg.Status!==true ||
-          typeof msg.SessionId!=='string' || !/^[A-Za-z0-9_-]{8,200}$/.test(msg.SessionId)) return;
-      completed.current=true; onComplete(msg.SessionId);
+      if(completed.current)return;
+      const reference=deviceDataCompletion(event.data,event.origin,environment,
+        event.source===document.querySelector<HTMLIFrameElement>('iframe[name=bling-worldpay-ddc-frame]')?.contentWindow);
+      if(!reference)return;
+      completed.current=true;onComplete(reference);
     };
     window.addEventListener('message',receive);
     return ()=>window.removeEventListener('message',receive);
-  },[valid?.url,onComplete]);
+  },[valid?.url,onComplete,environment]);
   useEffect(()=>{if(valid && !started && form.current){setStarted(true);form.current.submit();}},[valid?.url,valid?.jwt,started]);
   if(!valid)return <p role="alert">Device security check unavailable. Payment is not confirmed.</p>;
   return <section aria-label="Card security check">

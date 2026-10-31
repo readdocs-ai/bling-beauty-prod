@@ -3,10 +3,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { parseIssuerChallenge } from "@/lib/worldpay/issuer-challenge.mjs";
 import { buildChallengeDocument } from "@/lib/worldpay/challenge-document.mjs";
 
-/** Worldpay Try issuer challenge. The form is submitted from within the iframe.
+/** Worldpay issuer challenge. The form is submitted from within the iframe.
  * A browser callback is NOT proof of payment or of completed authentication.
  */
-export default function IssuerChallenge({ challenge, onReturn }: { challenge: unknown; onReturn: () => void }) {
+export default function IssuerChallenge({ challenge, onReturn, showDiagnostics=true }: { challenge: unknown; onReturn: () => void;showDiagnostics?:boolean }) {
   const validated = useMemo(() => parseIssuerChallenge(challenge), [challenge]);
   const [openedReference, setOpenedReference] = useState<string | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
@@ -38,9 +38,9 @@ export default function IssuerChallenge({ challenge, onReturn }: { challenge: un
     <iframe ref={frame} name="bling-issuer-challenge-frame" title="Secure bank identity verification"
       srcDoc={srcDoc} className="mt-3 h-[520px] w-full rounded border" referrerPolicy="no-referrer" />
     <p className="mt-2 text-sm" role="status">Awaiting issuer verification. Your order remains pending until Worldpay confirms the result.</p>
-    <details className="mt-2 text-xs"><summary>Preview bank-screen diagnostics</summary>
+    {showDiagnostics?<details className="mt-2 text-xs"><summary>Preview bank-screen diagnostics</summary>
       <p>Initial bank service: {new URL(validated.url).origin}</p>
       <p>Checkout origin must match the authentication return origin. No card details or authentication tokens are shown here.</p>
-    </details>
+    </details>:null}
   </section>;
 }

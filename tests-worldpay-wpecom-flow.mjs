@@ -87,7 +87,7 @@ globalThis.fetch=async(href,options={})=>{
  if(options.method==='POST'){
   providerCalls.push(href);if(providerTimeout)throw Error('synthetic timeout');
   if(href.endsWith('/api/payments')){const p=JSON.parse(options.body);currentReference=p.transactionReference;assert.equal(p.instruction.settlement.auto,true);assert.equal(p.instruction.value.amount,rows.find(r=>r.reference===p.transactionReference).amount_pence);return Response.json({outcome:'3dsDeviceDataRequired',deviceDataCollection:{jwt:'synthetic_jwt_123456',url:'https://issuer.example/ddc',bin:'444433'},_actions:{supply3dsDeviceData:{method:'POST',href:'https://access.worldpay.com/api/payments/opaque/3dsDeviceData'}}},{status:201});}
-  if(href.endsWith('/3dsDeviceData'))return Response.json({outcome:'3dsChallenged',challenge:{reference:'synthetic_challenge_123',jwt:'synthetic_jwt_123456',url:'https://issuer.example/challenge'},_actions:{complete3dsChallenge:{method:'POST',href:'https://access.worldpay.com/api/payments/opaque/3dsChallenges'}}},{status:201});
+  if(href.endsWith('/3dsDeviceData')){assert.deepEqual(JSON.parse(options.body),{});return Response.json({outcome:'3dsChallenged',challenge:{reference:'synthetic_challenge_123',jwt:'synthetic_jwt_123456',url:'https://issuer.example/challenge'},_actions:{complete3dsChallenge:{method:'POST',href:'https://access.worldpay.com/api/payments/opaque/3dsChallenges'}}},{status:201});}
   if(href.endsWith('/3dsChallenges')){assert.equal(options.body,undefined);return Response.json({outcome:'sentForSettlement'},{status:201});}
  }
  if(href.includes('/paymentQueries/payments?')){const a=rows.find(r=>r.reference===currentReference);return Response.json({_embedded:{payments:[{transactionReference:a.reference,entity:'synthetic',value:{amount:queryMismatch?1:a.amount_pence,currency:'GBP'},paymentId:'pay_synthetic_123',lastEvent:'settlementRequestSubmitted'}]}});}
@@ -115,7 +115,12 @@ try{
  assert.equal((await init.POST(request('/api/worldpay/initiate',payment))).status,409);assert.equal(providerCalls.length,1);
  const owned={reference:prepared.reference,ownershipSecret:prepared.ownershipSecret};
  assert.equal((await challenge.POST(request('/api/worldpay/challenge-complete',owned))).status,409);
- assert.equal((await ddc.POST(request('/api/worldpay/device-data',{...owned,collectionReference:'synthetic_ddc'}))).status,202);
+ assert.equal((await ddc.POST(request('/api/worldpay/device-data',{...owned,resumeWithoutDeviceData:true}))).status,409,'do not skip DDC before its timeout');
+ assert.equal((await ddc.POST(request('/api/worldpay/device-data',{...owned,resumeWithoutDeviceData:true,collectionReference:'synthetic_ddc'}))).status,400);
+ rows[0].updated_at=new Date(Date.now()-11000).toISOString();
+ assert.equal((await ddc.POST(request('/api/worldpay/device-data',{...owned,ownershipSecret:'b'.repeat(64),resumeWithoutDeviceData:true}))).status,409);
+ assert.equal((await ddc.POST(request('/api/worldpay/device-data',{...owned,resumeWithoutDeviceData:true}))).status,202);
+ assert.equal((await ddc.POST(request('/api/worldpay/device-data',{...owned,resumeWithoutDeviceData:true}))).status,409,'one continuation only');
  assert.equal((await challenge.POST(request('/api/worldpay/challenge-complete',owned))).status,409,'must see issuer callback first');
  const cb=new Request(base+'/api/worldpay/challenge-return',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:'TransactionId=synthetic_challenge_123'});
  assert.equal((await callback.POST(cb)).status,200);

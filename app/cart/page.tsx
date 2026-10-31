@@ -18,6 +18,7 @@ export default function CartPage() {
   const { items, subtotal, remove, setQty, clear } = useCart();
   const [configuration,setConfiguration]=useState<{environment:'try'|'live';available:boolean}|null>(null);
   const [paymentAmount,setPaymentAmount]=useState<number>();
+  const [providerStage,setProviderStage]=useState<string|null>(null);
   const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
   const [shipping, setShipping] = useState({ address1: "", address2: "", city: "", postcode: "", country: "GB" as const });
   const [busy, setBusy] = useState(false);
@@ -54,7 +55,7 @@ export default function CartPage() {
           if(status.status!=='pending'&&!attempt.submitted)markBrowserAttemptSubmitted(window.sessionStorage,attempt.reference,config.environment);
           if(!active)return;
           setPreviewOwnershipSecret(attempt.ownershipSecret);setPreviewCheckoutId(attempt.checkoutId);
-          setPaymentAmount(status.amountPence);setPreviewReference(attempt.reference);
+          setPaymentAmount(status.amountPence);setPreviewReference(attempt.reference);setProviderStage(status.providerStage??null);
           setPreviewStatus(status.status==='pending'?'Prepared checkout restored.':'Previous payment attempt restored. Check its status before continuing.');
         }
         setRecoveryReady(true);
@@ -111,7 +112,8 @@ export default function CartPage() {
         clearPaidBrowserAttempt(window.sessionStorage,previewReference,configuration?.environment);clear();
         window.location.assign(`/success?reference=${encodeURIComponent(previewReference)}`);return;
       }
-      if(configuration?.environment==='live')setPreviewStatus(result.providerStage==='declined'?'Your payment was declined. Please contact us before starting another payment.':'We are checking your payment. Please wait for confirmation before trying again.');
+      setProviderStage(result.providerStage??null);
+      if(configuration?.environment==='live')setPreviewStatus(result.status==='pending'?'No payment has been submitted. Enter your card details to continue.':result.providerStage==='device_data'?'Your payment is waiting for the bank security check. Do not submit your card again.':(result.providerStage==='declined'?'Your payment was declined. Please contact us before starting another payment.':'We are checking your payment. Please wait for confirmation before trying again.'));
       else setPreviewStatus(`Order: ${result.status}. Worldpay: ${result.providerStage || 'not started'}.`);
       setCaptureAvailable(configuration?.environment==='try' && result.settlementMode !== 'auto' && result.status === 'payment_processing' && result.providerStage === 'authorised');
     } catch { setPreviewStatus('Unable to verify status. Do not resubmit payment.'); }
@@ -235,7 +237,7 @@ export default function CartPage() {
                 <Button disabled={!recoveryReady || !configuration?.available || busy || Boolean(previewReference)} className="w-full justify-center">{busy ? "Preparing…" : previewReference ? "Checkout prepared" : configuration?.environment==='try' ? "Prepare Preview secure card fields" : "Continue to secure payment"}</Button>
               </form>
               {configuration&&!configuration.available&&<p role="status" className="text-sm">Card payments are temporarily unavailable. Please contact <a className="underline" href="mailto:info@blingbeautyproducts.com">info@blingbeautyproducts.com</a>.</p>}
-              {previewReference && configuration && <WorldpayPreviewFields environment={configuration.environment} amountPence={paymentAmount} reference={previewReference} checkoutId={previewCheckoutId} ownershipSecret={previewOwnershipSecret} />}
+              {previewReference && configuration && <WorldpayPreviewFields providerStage={providerStage} environment={configuration.environment} amountPence={paymentAmount} reference={previewReference} checkoutId={previewCheckoutId} ownershipSecret={previewOwnershipSecret} />}
               {previewReference && <div className="rounded-xl border p-3 text-sm" role="status">
                 <p>{previewStatus}</p>
                 <Button variant="ghost" onClick={() => void checkPreviewStatus()} className="mt-2 w-full justify-center">{configuration?.environment==='live'?'Check payment status':'Check Preview attempt status'}</Button>

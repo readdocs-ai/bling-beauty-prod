@@ -13,8 +13,8 @@ type WPWindow = Window & { Worldpay?: { checkout?: { init: (
   config: unknown, callback: (error: unknown, checkout?: Checkout) => void
 ) => void } } };
 
-/** Preview-only, one-shot Try payment initiation; card session sent only to our guarded server endpoint. */
-export default function WorldpayPreviewFields({ reference, checkoutId, ownershipSecret, environment='try',amountPence }: { reference: string; checkoutId: string; ownershipSecret: string;environment?:'try'|'live';amountPence?:number }) {
+/** Environment-isolated, one-shot payment initiation through the guarded server endpoint. */
+export default function WorldpayPreviewFields({ reference, checkoutId, ownershipSecret, environment='try',amountPence,providerStage }: { reference: string; checkoutId: string; ownershipSecret: string;environment?:'try'|'live';amountPence?:number;providerStage?:string|null }) {
   const isLive=environment==='live';
   const endpoint=(step:string)=>`/api/worldpay/${isLive?'':'preview-'}${step}`;
   const [loaded, setLoaded] = useState(false);
@@ -43,6 +43,7 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
         expiry: { selector: "#bling-preview-expiry", placeholder: "MM/YY" },
         cvv: { selector: "#bling-preview-cvv", placeholder: "CVC" },
       },
+      styles: { "input.is-invalid": { color: "#b91c1c" } },
       accessibility: { ariaLabel: { pan: "Card number", expiry: "Expiry", cvv: "Security code" } },
     }, (error, checkout) => {
       if (!mountedRef.current) { checkout?.remove?.(); return; }
@@ -88,7 +89,7 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
         if (error || typeof sessionState !== "string" || !sessionState) {
           busyRef.current = false;
           setBusy(false);
-          setStatus("Session generation failed. No payment has been attempted.");
+          setStatus("Session generation failed. No payment has been attempted. Please check your full card number, expiry and security code.");
           return;
         }
         // Treat the session as a one-time credential. Never log or persist it.
@@ -133,22 +134,24 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
     }
   }
 
-  async function continueDevice(collectionReference: string) {
+  async function continueDevice(collectionReference?: string) {
     if (deviceContinuationStarted.current) return;
+    setBusy(true);
     deviceContinuationStarted.current = true;
     try {
     const response = await fetch(endpoint('device-data'), {
       method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',
-      body: JSON.stringify({reference,ownershipSecret,collectionReference}),
+      body: JSON.stringify({reference,ownershipSecret,...(collectionReference?{collectionReference}:{resumeWithoutDeviceData:true})}),
     });
     const result: {providerStage?:string; challenge?:unknown} = await response.json().catch(()=>({}));
       if (!mountedRef.current) return;
       setDeviceData(null);
+      setBusy(false);
       if (response.ok && result.providerStage === 'challenge' && result.challenge) setChallenge(result.challenge);
       setStatus(response.ok ? 'Worldpay authentication progressed. Payment is not confirmed.' :
         'Authentication status is unresolved. Do not retry payment.');
     } catch {
-      if (mountedRef.current) setStatus('Authentication status is unresolved. Do not retry payment.');
+      if (mountedRef.current) {setBusy(false);setStatus('Authentication status is unresolved. Do not retry payment.');}
     }
   }
   async function continueChallenge() {
@@ -180,8 +183,12 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
         {busy ? (isLive?'Submitting payment…':'Submitting test payment…') : submitted ? 'Payment submitted — check status' : isLive ? `Pay${amountPence?` ${new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(amountPence/100)}`:''} securely` : 'Submit Worldpay Try test payment'}
       </button>
     </form>
-    {deviceData ? <WorldpayDeviceData deviceData={deviceData} onComplete={collectionReference => void continueDevice(collectionReference)} /> : null}
-    {challenge ? <IssuerChallenge challenge={challenge} onReturn={() => void continueChallenge()} /> : null}
+    {deviceData ? <WorldpayDeviceData environment={environment} deviceData={deviceData} onComplete={collectionReference => void continueDevice(collectionReference)} /> : null}
+    {isLive&&submitted&&!deviceData&&!challenge&&providerStage==='device_data'?<div className="mt-3">
+      <p>Resume the bank check for this existing payment. Your card will not be submitted again.</p>
+      <button type="button" disabled={busy||deviceContinuationStarted.current} onClick={()=>void continueDevice()} className="mt-2 rounded border px-4 py-2 disabled:opacity-50">Continue existing bank verification</button>
+    </div>:null}
+    {challenge ? <IssuerChallenge showDiagnostics={!isLive} challenge={challenge} onReturn={() => void continueChallenge()} /> : null}
     <p className="mt-3 break-words text-sm text-amber-900">{isLive?`Order ${reference}. Your bank may ask you to approve this payment. Please submit once and wait for confirmation.`:`Preview only, pending order ${reference}. TEST CARDS ONLY. Do not enter a real card or submit twice.`}</p>
   </section>;
 }

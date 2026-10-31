@@ -34,3 +34,10 @@ Confirm the Worldpay dashboard destination is https://blingbeautyproducts.com/ap
 Royal Mail imports are manual verified-order drafts with measured packed weight, parcel format and actual tax; no postage purchase, label generation or manifest is performed by the site.
 
 Sources checked: https://docs.worldpay.com/access/products/hosted-payment-pages/webhooks and https://docs.worldpay.com/access/products/payment-queries/retrieve-by-payment-id . The webhook documentation URL does not change the Access API checkout architecture.
+
+## Live device-data correction
+
+The first Live card attempt reached device_data, but the browser message listener still trusted only the Try Cardinal origin. Live now uses https://centinelapi.cardinalcommerce.com and Try uses https://centinelapistag.cardinalcommerce.com, with exact frame/source and completion checks. New DDC forms also reject a URL from the wrong environment.
+For an owned, stalled device_data action, the checkout offers an explicit continuation after the documented 10-second DDC timeout. It sends an empty DDC continuation body using the existing provider action and atomic continuation claim. It does not release the payment claim, submit another card session, create another payment or assert payment success. The bank/Worldpay still determines authentication outcome. If the action expired or a response is uncertain, stop and reconcile; do not restart payment automatically.
+Live bank screens omit Preview diagnostics. Invalid-card session failures prompt the customer to check their details; pending preparation is no longer labelled as a submitted payment.
+Official reference: https://docs.worldpay.com/access/products/payments/enable-features/3ds-authentication/integrated-3ds/web

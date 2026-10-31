@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {deviceDataOrigin,deviceDataCompletion,parseEnvironmentDeviceData} from './lib/worldpay/device-data.mjs';
+const live='https://centinelapi.cardinalcommerce.com',tryOrigin='https://centinelapistag.cardinalcommerce.com';
+const message={MessageType:'profile.completed',Status:true,SessionId:'0_3synthetic-session-reference'};
+assert.equal(deviceDataOrigin('live'),live);assert.equal(deviceDataOrigin('try'),tryOrigin);assert.throws(()=>deviceDataOrigin('other'));
+assert.equal(deviceDataCompletion(message,live,'live',true),message.SessionId);
+assert.equal(deviceDataCompletion(JSON.stringify(message),tryOrigin,'try',true),message.SessionId);
+for(const [origin,environment,frame] of [[tryOrigin,'live',true],[live,'try',true],[live+'.evil.example','live',true],[live,'live',false],['null','live',true]])assert.equal(deviceDataCompletion(message,origin,environment,frame),null);
+for(const data of [null,'not JSON',{...message,Status:false},{...message,MessageType:'other'},{...message,SessionId:'bad/reference'}])assert.equal(deviceDataCompletion(data,live,'live',true),null);
+const ddc={jwt:'abcdefghijklmnopqrst.0123456789.signature',url:live+'/V1/Cruise/Collect',bin:'400000'};
+assert.ok(parseEnvironmentDeviceData(ddc,'live'));assert.equal(parseEnvironmentDeviceData(ddc,'try'),null);assert.equal(parseEnvironmentDeviceData({...ddc,url:'https://issuer.example/collect'},'live'),null);
+console.log('PASS Live/Try DDC origin isolation, expected frame, string/object completion, malformed/failed callbacks and wrong-environment form rejection.');

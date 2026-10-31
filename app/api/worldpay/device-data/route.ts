@@ -14,8 +14,9 @@ const headers = { 'Cache-Control': 'private, no-store' };
 const bodySchema = z.object({
   reference: z.string().regex(/^BLING-[0-9a-f-]{36}$/),
   ownershipSecret: z.string().regex(/^[a-f0-9]{64}$/),
-  collectionReference: z.string().min(1).max(200).regex(/^[A-Za-z0-9_-]+$/),
-}).strict();
+  collectionReference: z.string().min(1).max(200).regex(/^[A-Za-z0-9_-]+$/).optional(),
+  resumeWithoutDeviceData:z.literal(true).optional(),
+}).strict().refine(value=>Boolean(value.collectionReference)!==Boolean(value.resumeWithoutDeviceData));
 function fail(status: number) {
   return NextResponse.json({error:'Payment authentication cannot be continued automatically. Please contact support.'}, {status,headers});
 }
@@ -29,6 +30,12 @@ export async function POST(request: Request) {
   // Payment claim IDs and provider action links NEVER come from the browser.
   const attempt=await liveAttempt(reference);
   if(!attempt||attempt.status!=='payment_processing'||attempt.provider_outcome!=='device_data'||typeof attempt.payment_claim_id!=='string')return fail(409);
+  // Worldpay supports continuing without DDC after a timeout. Resume only this
+  // owned, uncontinued action; never release or create another payment claim.
+  if(parsed.data.resumeWithoutDeviceData){
+    const since=Date.parse(attempt.updated_at??attempt.created_at);
+    if(!Number.isFinite(since)||Date.now()-since<10000)return fail(409);
+  }
   let claimed;
   try {
     claimed = await claim3dsContinuation(reference,attempt.payment_claim_id,ownershipSecret,'device_data','live');
@@ -36,7 +43,7 @@ export async function POST(request: Request) {
   if (!claimed) return fail(409);
   // At this point one database claim is consumed. Never retry automatically after a timeout.
   try {
-    const response = await advanceDeviceData(claimed.action,{collectionReference},'live');
+    const response = await advanceDeviceData(claimed.action,collectionReference?{collectionReference}:{},'live');
     const progress = await record3dsContinuation(reference,attempt.payment_claim_id,claimed.continuationClaim,response,'live');
     if (progress.outcome === 'challenge') {
       const challenge = response.data?.challenge;

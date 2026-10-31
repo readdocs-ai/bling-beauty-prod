@@ -192,6 +192,6 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
       <button type="button" disabled={busy||deviceContinuationStarted.current} onClick={()=>void continueDevice()} className="mt-2 rounded border px-4 py-2 disabled:opacity-50">Continue existing bank verification</button>
     </div>:null}
     {challenge ? <IssuerChallenge showDiagnostics={!isLive} challenge={challenge} onReturn={() => void continueChallenge()} /> : null}
-    <p className="mt-3 break-words text-sm text-amber-900">{isLive?`Order ${reference}. Your bank may ask you to approve this payment. Please submit once and wait for confirmation.`:`Preview only, pending order ${reference}. TEST CARDS ONLY. Do not enter a real card or submit twice.`}</p>
+    <p className="mt-3 break-words text-sm text-amber-900">{isLive?`Your bank may ask you to approve this payment. Please submit once and wait for confirmation.`:`Preview only, pending order ${reference}. TEST CARDS ONLY. Do not enter a real card or submit twice.`}</p>
   </section>;
 }

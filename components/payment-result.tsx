@@ -10,7 +10,7 @@ export function PaymentResult({reference}:{reference:string}){
     const response=await fetch(`/api/checkout/status?reference=${encodeURIComponent(reference)}`,{cache:'no-store'});
     const result=await response.json();
     if(!active)return;
-    setMessage(result.status==='paid'?'Payment confirmed. Your order has been recorded.':result.status==='failed'?'Payment was not successful. No paid order was recorded.':'Payment is not yet confirmed. Please check your email or contact us before trying again.');
+    setMessage(result.status==='paid'?`Payment confirmed. Your order has been recorded.${/^BLING-[0-9]{6,}$/.test(result.orderNumber??'')?` Your order number is ${result.orderNumber}.`:''}`:result.status==='failed'?'Payment was not successful. No paid order was recorded.':'Payment is not yet confirmed. Please check your email or contact us before trying again.');
    }catch{if(active)setMessage('We could not confirm your payment yet. Please contact us before trying again.');}
   })();
   return()=>{active=false;};

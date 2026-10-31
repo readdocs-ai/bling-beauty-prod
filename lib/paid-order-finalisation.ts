@@ -1,3 +1,4 @@
+import {customerOrderNumber} from './order-number.mjs';
 import {hasPaymentEvidence} from './worldpay/api-capture-policy.mjs';
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase';
@@ -8,7 +9,7 @@ import {emailDeliverySettings,emailIdempotencyKey} from '@/lib/email/delivery-po
 import {buildEmail} from '@/lib/email/templates';
 
 type Order = {
- id:string; reference:string; amount_pence:number;payment_environment:'try'|'live';
+ id:string; order_number?:number; reference:string; amount_pence:number;payment_environment:'try'|'live';
  customer:{name:string;email:string;phone?:string};
  shipping:{address1:string;address2?:string;city:string;postcode:string;country:'GB'};
  items:{name:string;quantity:number;unitPence:number}[];
@@ -46,7 +47,7 @@ export async function processPaidOrderEmails(orderId:string) {
  if(error || !data) throw new Error('Verified order not found');
  if(!hasPaymentEvidence(data)||!data.verified_at||!data.provider_payment_id)throw Error('Verified payment evidence is required for order emails');
  const order = data as Order;
- const email:EmailOrder={reference:order.reference,customerName:order.customer.name,customerEmail:order.customer.email,totalGBP:order.amount_pence/100,items:order.items.map(i=>({name:i.name,quantity:i.quantity})),shipping:order.shipping};
+ const email:EmailOrder={reference:order.reference,orderNumber:customerOrderNumber(order),customerName:order.customer.name,customerEmail:order.customer.email,totalGBP:order.amount_pence/100,items:order.items.map(i=>({name:i.name,quantity:i.quantity})),shipping:order.shipping};
  const outcomes:string[]=[];
  for(const [kind,emailKind] of [['customer_email','payment-confirmed'],['admin_email','admin-alert']] as const){
   // Disabled/configuration failures leave durable jobs pending, without claiming them.

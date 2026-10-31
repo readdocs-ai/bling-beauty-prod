@@ -33,7 +33,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
   const filtered = orders.filter(o => {
     if (payment && status(o.payment_status) !== payment) return false;
     if (fulfilment && status(o.fulfilment_status ?? o.status) !== fulfilment) return false;
-    return !q || [o.id, o.order_number, o.customer_email, o.email, o.customer_name, o.name, o.customer_phone, o.phone, o.payment_status, o.fulfilment_status, o.status].some(v => String(v ?? "").toLowerCase().includes(q));
+    return !q || [o.id, o.order_number, o.reference, o.customer_email, o.email, o.customer_name, o.name, o.customer_phone, o.phone, o.payment_status, o.fulfilment_status, o.status].some(v => String(v ?? "").toLowerCase().includes(q));
   });
   const pending = orders.filter(o => !["paid", "captured", "succeeded", "refunded"].includes(status(o.payment_status))).length;
   const awaitingDispatch = orders.filter(o => ["paid", "captured", "succeeded"].includes(status(o.payment_status)) && !["fulfilled", "dispatched", "shipped", "delivered", "cancelled"].includes(status(o.fulfilment_status ?? o.status))).length;

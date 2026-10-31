@@ -1,3 +1,4 @@
+import {customerOrderNumber} from '@/lib/order-number.mjs';
 import {NextResponse} from 'next/server';
 import {supabaseAdmin} from '@/lib/supabase';
 export const dynamic='force-dynamic';
@@ -10,5 +11,11 @@ export async function GET(req:Request){
   .eq('reference',reference).maybeSingle();
  if(error)return NextResponse.json({status:'verification_unavailable'},{status:503,headers});
  const matches=data&&data.payment_environment===process.env.WORLDPAY_ENVIRONMENT;
- return NextResponse.json({status:matches&&data.status==='paid_verified'?'paid':'pending'},{headers});
+ const paid=matches&&data.status==='paid_verified';
+ let orderNumber:string|undefined;
+ if(paid){
+  const order=await supabaseAdmin.from('bling_paid_orders').select('order_number').eq('reference',reference).eq('payment_environment',process.env.WORLDPAY_ENVIRONMENT).eq('status','paid').maybeSingle();
+  if(!order.error&&order.data)orderNumber=customerOrderNumber(order.data)||undefined;
+ }
+ return NextResponse.json({status:paid?'paid':'pending',...(orderNumber?{orderNumber}:{})},{headers});
 }

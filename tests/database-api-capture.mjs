@@ -13,10 +13,12 @@ try{
  await db.query("update bling_checkout_attempts set payment_environment='try'");await assert.rejects(commit());await db.query("update bling_checkout_attempts set payment_environment='live'");
  const id=(await commit()).rows[0].id;assert.ok(id);assert.equal((await commit()).rows[0].id,id);await assert.rejects(commit('other'));await assert.rejects(commit('pay_fixture',13000,'settlementrequestsubmitted',claim,'other'));
  assert.equal((await db.query('select count(*)::int as n from bling_paid_orders')).rows[0].n,1);assert.equal((await db.query('select count(*)::int as n from bling_paid_order_jobs')).rows[0].n,3);
- const order=(await db.query('select * from bling_paid_orders')).rows[0];assert.equal(order.payment_confirmation_stage,'settlement_submitted');assert.equal(order.provider_event_id,null);assert.ok(order.provider_verification_id);
+ await db.exec('reset role');await db.exec(readFileSync('supabase/migrations/20261031203813_customer_order_numbers.sql','utf8'));await db.exec('set role service_role');
+ const order=(await db.query('select * from bling_paid_orders')).rows[0];assert.equal(order.payment_confirmation_stage,'settlement_submitted');assert.equal(order.provider_event_id,null);assert.ok(order.provider_verification_id);assert.equal(Number(order.order_number),100001);
  const shippingClaim='33333333-3333-4333-8333-333333333333';const shipRef='BLING-'+ref.slice(6).replaceAll('-','');
  assert.equal((await db.query("select bling_claim_royal_mail_import($1,$2,500,0,'smallParcel',$3) as ok",[id,shippingClaim,shipRef])).rows[0].ok,true);
  assert.equal((await db.query("select bling_finish_royal_mail_import($1,$2,$3,'12345',null,null) as ok",[id,shippingClaim,shipRef])).rows[0].ok,true);
  const webhook=(await db.query("select bling_commit_wpecom_event('live','event_fixture',$1,$2,'pay_fixture','merchant_fixture','settlementrequestsubmitted') as id",[hash,claim])).rows[0].id;assert.equal(webhook,id);assert.equal((await db.query('select count(*)::int as n from bling_paid_order_jobs')).rows[0].n,3);
+ assert.equal(Number((await db.query('select order_number from bling_paid_orders where id=$1',[id])).rows[0].order_number),100001);
  console.log('PASS API capture actual SQL: private access, amount/claim/merchant/hash/environment guards, independent evidence, capture stage, replay and late webhook idempotency.');
 }finally{await db.close();}

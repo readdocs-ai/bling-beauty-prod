@@ -31,7 +31,7 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
   ];
   return <main className="mx-auto max-w-5xl px-4 py-12">
     <Link href="/admin/orders" className="text-sm underline">← Back to orders</Link>
-    <div className="mt-4 flex flex-wrap items-start justify-between gap-3"><div><h1 className="font-display text-4xl">Order details</h1><p className="mt-2 break-all text-sm text-soft-black/60">Reference: {shown(order.order_number ?? order.id)}</p><PrintOrderButton /></div></div>
+    <div className="mt-4 flex flex-wrap items-start justify-between gap-3"><div><h1 className="font-display text-4xl">Order details</h1><p className="mt-2 break-all text-sm text-soft-black/60">Order number: {shown(order.order_number ?? order.id)}</p><PrintOrderButton /></div></div>
     <p className="print:hidden mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Read-only record. Payment is not considered verified solely because a customer returned from checkout. Confirm payment in your provider dashboard before dispatch.</p>
     {order.test_order&&<p role="status" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 font-semibold">Test order — do not dispatch.</p>}
     {jobs&&<section className="mt-5 rounded-xl border p-4"><h2 className="font-semibold">Order notifications</h2>{jobs.filter(j=>j.kind!=='royal_mail').map(j=><p key={j.kind} className="mt-2 text-sm">{j.kind==='customer_email'?'Customer email':'Admin email'}: {j.status==='accepted'?'Accepted by email provider (delivery not yet confirmed)':j.status}{j.last_error?` — ${j.last_error}`:''}</p>)}</section>}

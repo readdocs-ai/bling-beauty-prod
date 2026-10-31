@@ -13,7 +13,7 @@ async function request(path:string,body?:unknown){
   // Only bounded machine codes reach admin; never return raw provider bodies or credentials.
   const problem:unknown=await response.json().catch(()=>null);
   const codes=(Array.isArray(problem)?problem:[problem]).flatMap((p:any)=>typeof p?.code==='string'&&/^[A-Za-z0-9_.-]{1,80}$/.test(p.code)?[p.code]:[]).slice(0,5);
-  throw Object.assign(Error(`Royal Mail returned HTTP ${response.status}${codes.length?` (${codes.join(', ')})`:''}. Review Click & Drop before any retry.`),{providerStatus:response.status});
+  throw Object.assign(Error(`Royal Mail returned HTTP ${response.status}${codes.length?` (${codes.join(', ')})`:''}. Review Click & Drop before any retry.`),{providerStatus:response.status,providerDiagnostic:true});
  }
  return response.json();
 }
@@ -45,7 +45,7 @@ export async function findClickDropOrder(reference:string):Promise<RoyalMailResu
   for(let page=0;page<5;page++){
    await new Promise(resolve=>setTimeout(resolve,600));
    const batch=await request('/orders?pageSize=100'+(token?'&continuationToken='+encodeURIComponent(token):''));
-   if(!batch||!Array.isArray(batch.orders))throw Error('Royal Mail order lookup is incomplete; do not create another draft');
+   if(!batch||!Array.isArray(batch.orders)){const shape=Array.isArray(batch)?'array':batch&&typeof batch==='object'?Object.entries(batch).slice(0,8).map(([k,v])=>`${k.replace(/[^A-Za-z0-9_]/g,'').slice(0,40)}:${Array.isArray(v)?'array':v===null?'null':typeof v}`).join(','):'empty';throw Error(`Royal Mail order lookup is incomplete (${shape}); do not create another draft`);}
    matches.push(...batch.orders.filter((o:any)=>o?.orderReference===reference));
    if(matches.length>1)throw Error('Royal Mail reference is ambiguous');
    const next=batch.continuationToken;
@@ -66,5 +66,12 @@ export async function importClickDropOrder(payload:{items:any[]}):Promise<RoyalM
  if(await findClickDropOrder(item.orderReference))throw Error('An order already exists in Click & Drop. Use Check existing import.');
  // Account rate limit is two calls/second; do not immediately POST after the lookup.
  await new Promise(resolve=>setTimeout(resolve,600));
- return checkedRoyalMailCreation(await request('/orders',payload),item.orderReference);
+ const result=await request('/orders',payload);
+ if(result?.errorsCount>0){
+  const errors=Array.isArray(result.failedOrders)?result.failedOrders.flatMap((o:any)=>Array.isArray(o?.errors)?o.errors:[]):[];
+  const codes=errors.flatMap((e:any)=>Number.isSafeInteger(e?.errorCode)?[String(e.errorCode)]:[]).slice(0,5);
+  const fields=errors.flatMap((e:any)=>Array.isArray(e?.fields)?e.fields.flatMap((f:any)=>typeof f?.fieldName==='string'&&/^[A-Za-z0-9_.\[\]-]{1,100}$/.test(f.fieldName)?[f.fieldName]:[]):[]).slice(0,10);
+  throw Object.assign(Error(`Royal Mail rejected the draft${codes.length?` (codes ${codes.join(', ')})`:''}${fields.length?` — check ${fields.join(', ')}`:''}. Check existing import before retrying.`),{providerDiagnostic:true});
+ }
+ return checkedRoyalMailCreation(result,item.orderReference);
 }

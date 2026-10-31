@@ -23,9 +23,10 @@ export async function importPaidOrderToRoyalMail(id:string,packing:Packing){
  const {data,error}=await supabaseAdmin.rpc('bling_claim_royal_mail_import',{p_order_id:id,p_claim:claim,p_weight:packing.weightGrams,p_tax:packing.taxPence,p_format:packing.packageFormat,p_reference:payload.items[0].orderReference});
  if(error)throw Error('Shipping database claim is unavailable');if(data!==true)throw Error('This import is already claimed. Check the existing import before continuing.');
  try{return await finish(id,claim,await importClickDropOrder(payload));}
- catch{
-  await supabaseAdmin.from('bling_paid_order_jobs').update({status:'needs_review',last_error:'Import unresolved. Use Check existing import; never repeat a POST after timeout.'}).eq('order_id',id).eq('kind','royal_mail').eq('status','sending');
-  throw Error('Import not confirmed. Use Check existing import; do not submit another import.');
+ catch(error){
+  const diagnostic=error instanceof Error&&'providerDiagnostic' in error&&error.providerDiagnostic===true?error.message:'Import unresolved. Use Check existing import; never repeat a POST after timeout.';
+  await supabaseAdmin.from('bling_paid_order_jobs').update({status:'needs_review',last_error:diagnostic}).eq('order_id',id).eq('kind','royal_mail').eq('status','sending');
+  throw Error(diagnostic==='Import unresolved. Use Check existing import; never repeat a POST after timeout.'?'Import not confirmed. Use Check existing import; do not submit another import.':diagnostic);
  }
 }
 /** Read provider state only. A timeout never causes another create-order request. */

@@ -32,7 +32,7 @@ export async function POST(request:Request) {
   const lines=[...qty].map(([slug,quantity])=>{
     const item=catalogue.get(slug)!;
     const unitPence=Math.round(item.sellingPrice*100);
-    return {slug,name:item.name,quantity,unitPence,lineTotalPence:unitPence*quantity};
+    return {slug,name:`${item.brand} ${item.name}`,quantity,unitPence,lineTotalPence:unitPence*quantity};
   });
   const amount=lines.reduce((sum,line)=>sum+line.lineTotalPence,0);
   if(!Number.isSafeInteger(amount) || amount<1 || amount>1000000) return fail('Invalid order amount',400);

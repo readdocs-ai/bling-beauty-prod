@@ -1,3 +1,5 @@
+> Historical checkpoint. For the current WPecom implementation and remaining verification, see WPECOM-LAUNCH-CHECKPOINT-2026-10-31.md.
+
 # Bling Beauty — release gate and implementation audit (17 October 2026)
 
 This package is NOT a live-release candidate. No live payment endpoint has been enabled.

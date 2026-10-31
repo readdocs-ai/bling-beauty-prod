@@ -1,3 +1,4 @@
+import {recoverOwnedPayment} from '@/lib/worldpay/settlement-worker';
 import {liveRequestAllowed,liveAttempt} from '@/lib/worldpay/live-checkout';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -14,7 +15,8 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({error:'Invalid attempt credentials'},{status:400,headers});
   const attempt=await liveAttempt(parsed.data.reference);
   if(!attempt)return NextResponse.json({error:'Attempt unavailable'},{status:404,headers});
-  const result = await getCheckoutAttemptStatus(parsed.data.reference, parsed.data.ownershipSecret);
+  let result = await getCheckoutAttemptStatus(parsed.data.reference, parsed.data.ownershipSecret);
   if (!result) return NextResponse.json({error:'Attempt unavailable'},{status:404,headers});
+  if(result.status==='payment_processing'){await recoverOwnedPayment(parsed.data.reference);result=await getCheckoutAttemptStatus(parsed.data.reference,parsed.data.ownershipSecret);if(!result)return NextResponse.json({error:'Attempt unavailable'},{status:404,headers});}
   return NextResponse.json({ ...result, amountPence:attempt.amount_pence,paymentEnabled:true },{headers});
 }

@@ -1,4 +1,5 @@
 import 'server-only';
+import {matchesWpecomQuery} from './webhook-policy.mjs';
 import {supabaseAdmin} from '@/lib/supabase';
 import {verifyWorldpayPayment} from '@/lib/worldpay-payment-query';
 import {matchesSettledQuery,type SettledEvent} from './settlement-events.mjs';
@@ -16,10 +17,12 @@ export async function processSettlementEvent(event:SettledEvent){
  ).eq('reference',event.reference).maybeSingle();
  if(error||!a)return 'unmatched';
  const query=await verifyWorldpayPayment(event.reference,a.amount_pence);
- if(!matchesSettledQuery(event,a,query))return 'awaiting_verification';
- const {data:orderId,error:commitError}=await supabaseAdmin.rpc('bling_commit_settled_event',{
+ const wpecom=event.event_type==='sentForSettlement'&&event.authentication_method==='worldpay_ip';
+ if(!(wpecom?matchesWpecomQuery(event,a,query,process.env.WORLDPAY_ENTITY?.trim()??''):matchesSettledQuery(event,a,query)))return 'awaiting_verification';
+ const {data:orderId,error:commitError}=await supabaseAdmin.rpc(wpecom?'bling_commit_wpecom_event':'bling_commit_settled_event',{
   p_environment:event.environment,p_event_id:event.event_id,p_body_sha256:event.body_sha256,
   p_claim:a.payment_claim_id,p_payment_id:query.paymentId,
+  ...(wpecom?{p_entity:process.env.WORLDPAY_ENTITY?.trim(),p_query_event:query.event}:{}),
  });
  if(commitError||typeof orderId!=='string')throw Error('Settlement commit unavailable');
  await processPaidOrderEmails(orderId);
@@ -42,4 +45,18 @@ export async function recoverSettlementInbox(){
   try{outcomes.push(...await processPaidOrderEmails(id));}catch{outcomes.push('email_needs_review');}
  }
  return outcomes;
+}
+
+/** Owner-authenticated checkout status checks can recover a delayed provider query.
+ * A conditional timestamp reservation throttles recovery; never charges a card. */
+export async function recoverOwnedPayment(reference:string){
+ const {data,error}=await supabaseAdmin.from('bling_worldpay_settlement_events').select('*')
+  .eq('environment','live').eq('reference',reference).eq('status','pending').limit(1).maybeSingle();
+ if(error||!data)return;
+ const cutoff=new Date(Date.now()-15000).toISOString();
+ const reserved=await supabaseAdmin.from('bling_worldpay_settlement_events').update({last_checked_at:new Date().toISOString()})
+  .eq('environment','live').eq('event_id',data.event_id).eq('status','pending')
+  .or(`last_checked_at.is.null,last_checked_at.lt.${cutoff}`).select('event_id').maybeSingle();
+ if(reserved.error||!reserved.data)return;
+ try{await processSettlementEvent(data as SettledEvent);}catch{console.error('Worldpay payment confirmation pending review');}
 }

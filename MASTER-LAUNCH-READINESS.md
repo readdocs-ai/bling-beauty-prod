@@ -1,3 +1,5 @@
+> Historical checkpoint. For the current WPecom implementation and remaining verification, see WPECOM-LAUNCH-CHECKPOINT-2026-10-31.md.
+
 # BLING Beauty Products — master prelaunch update (19 October 2026)
 
 ## Implemented in this package

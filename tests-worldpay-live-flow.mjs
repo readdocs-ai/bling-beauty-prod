@@ -10,12 +10,13 @@ import {createHash,createHmac} from 'node:crypto';
 const require=createRequire(import.meta.url),ts=require('typescript');
 const savedEnv={...process.env},savedFetch=globalThis.fetch;
 const rows=[],events=[],orders=[],jobs=[],deliveries=[],providerCalls=[],afterJobs=[];
+let products=[];
 let suspended=false,providerTimeout=false,queryMismatch=false;
-const rowMatch=(row,filters)=>filters.every(([key,value])=>row[key]===value);
-function table(name){return ({bling_checkout_attempts:rows,bling_worldpay_settlement_events:events,bling_paid_orders:orders,bling_paid_order_jobs:jobs,store_settings:[{id:1,orders_suspended:suspended}]})[name]??[];}
+const rowMatch=(row,filters)=>filters.every(([key,value])=>Array.isArray(value)?value.includes(row[key]):row[key]===value);
+function table(name){return ({bling_checkout_attempts:rows,bling_worldpay_settlement_events:events,bling_paid_orders:orders,bling_paid_order_jobs:jobs,products,store_settings:[{id:1,orders_suspended:suspended}]})[name]??[];}
 function from(name){
  let action='select',payload,filters=[],single=false,projection='*';
- const q={select(s='*'){projection=s;return q;},insert(value){action='insert';payload=value;return q;},update(value){action='update';payload=value;return q;},eq(k,v){filters.push([k,v]);return q;},in(){return q;},order(){return q;},limit(){return q;},maybeSingle(){single=true;return q;},single(){single=true;return q;},then(ok,no){
+ const q={select(s='*'){projection=s;return q;},insert(value){action='insert';payload=value;return q;},update(value){action='update';payload=value;return q;},eq(k,v){filters.push([k,v]);return q;},in(k,v){filters.push([k,v]);return q;},order(){return q;},limit(){return q;},maybeSingle(){single=true;return q;},single(){single=true;return q;},then(ok,no){
   try{
    const t=table(name);let found=t.filter(row=>rowMatch(row,filters));
    if(action==='insert'){
@@ -96,10 +97,14 @@ const request=(path,body,origin=base)=>new Request(base+path,{method:'POST',head
 try{
  const prepare=await load('app/api/worldpay/prepare/route.ts'),init=await load('app/api/worldpay/initiate/route.ts'),ddc=await load('app/api/worldpay/device-data/route.ts'),challenge=await load('app/api/worldpay/challenge-complete/route.ts'),callback=await load('app/api/worldpay/challenge-return/route.ts'),status=await load('app/api/worldpay/attempt-status/route.ts'),eventsRoute=await load('app/api/worldpay/events/route.ts');
  const {luxuryItems}=await load('lib/luxury-catalogue.ts');
+ products=luxuryItems.map(p=>({slug:p.slug,name:`${p.brand} ${p.name}`,price_gbp:p.sellingPrice,is_active:true}));
  const body={items:[{slug:luxuryItems[0].slug,quantity:1}],customer:{name:'Synthetic Customer',email:'customer@example.invalid'},shipping:{address1:'Synthetic test address',city:'London',postcode:'SW1A 1AA',country:'GB'}};
  suspended=true;assert.equal((await prepare.POST(request('/api/checkout',body))).status,503);assert.equal(rows.length,0);suspended=false;
  assert.equal((await prepare.POST(request('/api/checkout',body,'https://attacker.example'))).status,503);
+ products[0].is_active=false;assert.equal((await prepare.POST(request('/api/checkout',body))).status,400);assert.equal(rows.length,0);products[0].is_active=true;
+ products[0].price_gbp=131; // Prove checkout uses the current DB price, not the static £130 catalogue.
  const response=await prepare.POST(request('/api/checkout',body));assert.equal(response.status,200);const prepared=await response.json();
+ assert.equal(prepared.amountPence,13100);assert.equal(rows[0].items[0].name,products[0].name);
  assert.equal(rows.length,1);assert.equal(rows[0].payment_environment,'live');assert.equal(rows[0].settlement_mode,'auto');assert.equal(rows[0].browser_secret_sha256,createHash('sha256').update(prepared.ownershipSecret).digest('hex'));
  const browser={userAgent:'Synthetic Browser',language:'en-GB',width:1280,height:800,timeZone:0};
  const payment={reference:prepared.reference,ownershipSecret:prepared.ownershipSecret,browser,sessionHref:'https://access.worldpay.com/sessions/synthetic_session'};

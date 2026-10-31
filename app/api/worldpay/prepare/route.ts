@@ -29,11 +29,17 @@ export async function POST(request:Request) {
     if(count>10) return fail('Maximum 10 per product',400);
     qty.set(item.slug,count);
   }
+  // Re-read active products at checkout: basket values and static display data are not prices.
+  const {data:products,error:productError}=await supabaseAdmin.from('products')
+    .select('slug,name,price_gbp').in('slug',[...qty.keys()]).eq('is_active',true);
+  if(productError||!products||products.length!==qty.size)return fail('A product is unavailable',400);
+  const current=new Map(products.map(item=>[item.slug,item]));
   const lines=[...qty].map(([slug,quantity])=>{
-    const item=catalogue.get(slug)!;
-    const unitPence=Math.round(item.sellingPrice*100);
-    return {slug,name:`${item.brand} ${item.name}`,quantity,unitPence,lineTotalPence:unitPence*quantity};
+    const item=current.get(slug)!;
+    const unitPence=Math.round(Number(item.price_gbp)*100);
+    return {slug,name:item.name,quantity,unitPence,lineTotalPence:unitPence*quantity};
   });
+  if(lines.some(line=>!Number.isSafeInteger(line.unitPence)||line.unitPence<1||typeof line.name!=='string'||!line.name.trim()))return fail('A product is unavailable',400);
   const amount=lines.reduce((sum,line)=>sum+line.lineTotalPence,0);
   if(!Number.isSafeInteger(amount) || amount<1 || amount>1000000) return fail('Invalid order amount',400);
   const reference=`BLING-${randomUUID()}`;

@@ -10,7 +10,7 @@ export default async function CheckoutOperations(){
   supabaseAdmin.from('store_settings').select('orders_suspended').eq('id',1).maybeSingle(),
  ]);
  const live=liveReadiness(process.env);
- const checks=[...Object.entries(live.checks).map(([name,ok])=>[`Live ${name}`,ok] as const),['Live ordering suspended',settings.data?.orders_suspended===true],['Worldpay event signatures configured',!!process.env.WORLDPAY_EVENT_SIGNING_KEYS],
+ const checks=[...Object.entries(live.checks).map(([name,ok])=>[`Live ${name}`,ok] as const),['Live ordering suspended',settings.data?.orders_suspended===true],['WPecom webhook verification configured',process.env.WORLDPAY_WEBHOOK_AUTH==='worldpay_ip'&&process.env.BLING_WPECOM_FIREWALL_VERIFIED==='true'],
   ['Preview settlement processing enabled',process.env.BLING_PREVIEW_SETTLEMENT_EVENTS==='true'],['Resend configured',!!process.env.RESEND_API_KEY],
   ['Order email delivery enabled',process.env.BLING_ORDER_EMAILS_ENABLED==='true'],['Test recipient list configured',!!process.env.BLING_TEST_EMAIL_RECIPIENTS],
   ['Automatic settlement for new test attempts enabled',process.env.BLING_PREVIEW_AUTO_SETTLEMENT==='true']] as const;

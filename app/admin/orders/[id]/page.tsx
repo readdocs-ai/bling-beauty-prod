@@ -26,7 +26,7 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
   const fields: { title: string; names: string[] }[] = [
     { title: "Customer", names: ["customer_name", "name", "customer_email", "email", "customer_phone", "phone"] },
     { title: "Delivery", names: ["shipping_name", "shipping_address", "shipping_address_line1", "shipping_address_line2", "shipping_city", "shipping_postcode", "shipping_country", "address", "postcode"] },
-    { title: "Payment and fulfilment", names: ["royal_mail_status", "royal_mail_order_id", "royal_mail_tracking_number", "royal_mail_reference", "payment_provider", "payment_environment", "payment_verified_at", "payment_status", "fulfilment_status", "status", "total_gbp", "total_amount_gbp", "currency", "created_at", "updated_at"] },
+    { title: "Payment and fulfilment", names: ["royal_mail_status", "royal_mail_order_id", "royal_mail_tracking_number", "royal_mail_reference", "payment_provider", "payment_environment", "payment_confirmation_stage", "payment_verified_at", "payment_status", "fulfilment_status", "status", "total_gbp", "total_amount_gbp", "currency", "created_at", "updated_at"] },
     { title: "Order contents", names: ["items", "line_items", "products", "shipping_gbp", "delivery_gbp", "notes"] },
   ];
   return <main className="mx-auto max-w-5xl px-4 py-12">

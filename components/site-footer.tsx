@@ -38,7 +38,7 @@ export function SiteFooter() {
           <div className="font-semibold text-white">Shop confidence</div>
           <div className="mt-3 grid gap-2 text-ivory/70">
             <span>UK delivery options at checkout</span>
-            <span>Secure payment options coming soon</span>
+            <span>Card payments processed by Worldpay</span>
             <span>Need assistance? Get in touch</span>
             <span className="text-xs text-ivory/50">Contact us for help with your order.</span>
           <a href="mailto:info@blingbeautyproducts.com" className="hover:text-tangerine">info@blingbeautyproducts.com</a>

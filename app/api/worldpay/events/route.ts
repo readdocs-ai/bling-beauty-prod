@@ -1,3 +1,5 @@
+import {createHash} from 'node:crypto';
+import {trustedWorldpaySource,parseWpecomEvent,wpecomEventsConfigured} from '@/lib/worldpay/webhook-policy.mjs';
 import {signingKeysConfigured} from '@/lib/worldpay/live-policy.mjs';
 import {NextResponse,after} from 'next/server';
 import {supabaseAdmin} from '@/lib/supabase';
@@ -12,14 +14,20 @@ export async function POST(request:Request){
  const enabled=(environment==='try'&&process.env.VERCEL_ENV==='preview'&&process.env.BLING_PREVIEW_SETTLEMENT_EVENTS==='true')||
   (environment==='live'&&process.env.VERCEL_ENV==='production'&&process.env.BLING_LIVE_SETTLEMENT_EVENTS==='true');
  if(!enabled)return NextResponse.json({error:'Unavailable'},{status:404,headers});
- let keys:Record<string,string>;
- try{if(!signingKeysConfigured(process.env.WORLDPAY_EVENT_SIGNING_KEYS))throw Error();keys=JSON.parse(process.env.WORLDPAY_EVENT_SIGNING_KEYS??'');if(!keys||typeof keys!=='object'||Array.isArray(keys)||!Object.keys(keys).length)throw Error();}
+ const wpecom=process.env.WORLDPAY_WEBHOOK_AUTH==='worldpay_ip';
+ const sourceIp=wpecom?trustedWorldpaySource(request.headers,process.env):null;
+ if(wpecom&&(!wpecomEventsConfigured(process.env)||!sourceIp))return NextResponse.json({error:'Forbidden'},{status:403,headers});
+ let keys:Record<string,string>={};
+ try{if(!wpecom){if(!signingKeysConfigured(process.env.WORLDPAY_EVENT_SIGNING_KEYS))throw Error();keys=JSON.parse(process.env.WORLDPAY_EVENT_SIGNING_KEYS??'');if(!keys||typeof keys!=='object'||Array.isArray(keys)||!Object.keys(keys).length)throw Error();}}
  catch{return NextResponse.json({error:'Event verification unavailable'},{status:503,headers});}
  let raw:Buffer;
  try{raw=await boundedEventBody(request);}catch{return NextResponse.json({error:'Invalid body'},{status:400,headers});}
- if(!verifyEventSignature(raw,request.headers.get('event-signature'),keys))return NextResponse.json({error:'Invalid signature'},{status:400,headers});
+ if(!wpecom&&!verifyEventSignature(raw,request.headers.get('event-signature'),keys))return NextResponse.json({error:'Invalid signature'},{status:400,headers});
  try{
-  const event=parseSettledEvent(raw,environment);
+  let event;
+  try{event=wpecom?parseWpecomEvent(raw,environment,sourceIp!,process.env.WORLDPAY_ENTITY?.trim()??''):parseSettledEvent(raw,environment);}
+  catch{return NextResponse.json({error:'Invalid event'},{status:400,headers});}
+  if(event)event={...event,body_sha256:createHash('sha256').update(raw).digest('hex')};
   if(!event)return NextResponse.json({received:true},{headers});
   const {error}=await supabaseAdmin.from('bling_worldpay_settlement_events').insert(event);
   if(error&&error.code!=='23505')throw Error('Inbox unavailable');

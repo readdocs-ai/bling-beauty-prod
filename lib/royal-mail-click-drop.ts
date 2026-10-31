@@ -9,7 +9,12 @@ async function request(path:string,body?:unknown){
  const response=await fetch(BASE+path,{method:body?'POST':'GET',headers:{Authorization:`Bearer ${key()}`,Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},
   ...(body?{body:JSON.stringify(body)}:{}),redirect:'error',cache:'no-store',signal:AbortSignal.timeout(15000)});
  if(response.status===404&&!body)return null;
- if(!response.ok)throw Error(`Royal Mail returned HTTP ${response.status}. Review Click & Drop before any retry.`);
+ if(!response.ok){
+  // Only bounded machine codes reach admin; never return raw provider bodies or credentials.
+  const problem:unknown=await response.json().catch(()=>null);
+  const codes=(Array.isArray(problem)?problem:[problem]).flatMap((p:any)=>typeof p?.code==='string'&&/^[A-Za-z0-9_.-]{1,80}$/.test(p.code)?[p.code]:[]).slice(0,5);
+  throw Object.assign(Error(`Royal Mail returned HTTP ${response.status}${codes.length?` (${codes.join(', ')})`:''}. Review Click & Drop before any retry.`),{providerStatus:response.status});
+ }
  return response.json();
 }
 export async function checkClickDropConnection(){
@@ -30,7 +35,26 @@ export async function prepareClickDropAccount(payload:{items:any[]}){
 }
 export async function findClickDropOrder(reference:string):Promise<RoyalMailResult|null>{
  if(!/^BLING-[a-f0-9]{32}$/.test(reference))throw Error('Invalid Royal Mail reference');
- const result=await request(`/orders/${encodeURIComponent('"'+reference+'"')}`);
+ let result;
+ try{result=await request(`/orders/${encodeURIComponent('"'+reference+'"')}`);}
+ catch(error){
+  if(!error||typeof error!=='object'||!('providerStatus' in error)||error.providerStatus!==400)throw error;
+  // Some accounts reject the quoted-reference endpoint. The documented paged
+  // GET is a read-only fallback. Absence is conclusive only after ALL pages.
+  let token:string|undefined;const matches:any[]=[];const seen=new Set<string>();
+  for(let page=0;page<5;page++){
+   await new Promise(resolve=>setTimeout(resolve,600));
+   const batch=await request('/orders?pageSize=100'+(token?'&continuationToken='+encodeURIComponent(token):''));
+   if(!batch||!Array.isArray(batch.orders))throw Error('Royal Mail order lookup is incomplete; do not create another draft');
+   matches.push(...batch.orders.filter((o:any)=>o?.orderReference===reference));
+   if(matches.length>1)throw Error('Royal Mail reference is ambiguous');
+   const next=batch.continuationToken;
+   if(next===null||next===undefined||next==='')return matches.length?checkedRoyalMailOrder(matches[0],reference):null;
+   if(typeof next!=='string'||next.length>4096||seen.has(next))throw Error('Royal Mail order lookup is incomplete; do not create another draft');
+   seen.add(next);token=next;
+  }
+  throw Error('Royal Mail order lookup is incomplete; do not create another draft');
+ }
  if(result===null||Array.isArray(result)&&result.length===0)return null;
  if(!Array.isArray(result)||result.length!==1)throw Error('Royal Mail reference is ambiguous');
  return checkedRoyalMailOrder(result[0],reference);

@@ -33,8 +33,10 @@ export async function prepareClickDropAccount(payload:{items:any[]}){
  else delete payload.items[0].postageDetails;
  await new Promise(resolve=>setTimeout(resolve,600));return payload;
 }
-export async function findClickDropOrder(reference:string):Promise<RoyalMailResult|null>{
+export async function findClickDropOrder(reference:string,orderDate?:string):Promise<RoyalMailResult|null>{
  if(!/^BLING-[a-f0-9]{32}$/.test(reference))throw Error('Invalid Royal Mail reference');
+ if(orderDate!==undefined&&!Number.isFinite(Date.parse(orderDate)))throw Error('Invalid order date');
+ const start=orderDate?new Date(new Date(orderDate).setUTCHours(0,0,0,0)).toISOString():undefined;
  let result;
  try{result=await request(`/orders/${encodeURIComponent('"'+reference+'"')}`);}
  catch(error){
@@ -44,16 +46,16 @@ export async function findClickDropOrder(reference:string):Promise<RoyalMailResu
   let token:string|undefined;const matches:any[]=[];const seen=new Set<string>();
   for(let page=0;page<5;page++){
    await new Promise(resolve=>setTimeout(resolve,600));
-   const batch=await request('/orders?pageSize=100'+(token?'&continuationToken='+encodeURIComponent(token):''));
+   const batch=await request('/orders?pageSize=100'+(start?'&startDateTime='+encodeURIComponent(start):'')+(token?'&continuationToken='+encodeURIComponent(token):''));
    if(!batch||!Array.isArray(batch.orders)){const shape=Array.isArray(batch)?'array':batch&&typeof batch==='object'?Object.entries(batch).slice(0,8).map(([k,v])=>`${k.replace(/[^A-Za-z0-9_]/g,'').slice(0,40)}:${Array.isArray(v)?'array':v===null?'null':typeof v}`).join(','):'empty';throw Error(`Royal Mail order lookup is incomplete (${shape}); do not create another draft`);}
    matches.push(...batch.orders.filter((o:any)=>o?.orderReference===reference));
    if(matches.length>1)throw Error('Royal Mail reference is ambiguous');
    const next=batch.continuationToken;
    if(next===null||next===undefined||next==='')return matches.length?checkedRoyalMailOrder(matches[0],reference):null;
-   if(typeof next!=='string'||next.length>4096||seen.has(next))throw Error('Royal Mail order lookup is incomplete; do not create another draft');
+   if(typeof next!=='string'||next.length>4096||seen.has(next))throw Error('Royal Mail order lookup returned an invalid or repeated page token; do not create another draft');
    seen.add(next);token=next;
   }
-  throw Error('Royal Mail order lookup is incomplete; do not create another draft');
+  throw Error('Royal Mail order lookup exceeds five pages; do not create another draft');
  }
  if(result===null||Array.isArray(result)&&result.length===0)return null;
  if(!Array.isArray(result)||result.length!==1)throw Error('Royal Mail reference is ambiguous');
@@ -63,7 +65,7 @@ export async function importClickDropOrder(payload:{items:any[]}):Promise<RoyalM
  if(process.env.VERCEL_ENV!=='production'||process.env.BLING_ROYAL_MAIL_IMPORT_ENABLED!=='true')throw Error('Royal Mail imports are disabled');
  const item=payload.items[0];
  if(payload.items.length!==1||item?.sender?.tradingName!=='Bling Beauty Products'||item.label||(item.postageDetails!==undefined&&(!item.postageDetails||Object.keys(item.postageDetails).some(k=>k!=='carrierName')||typeof item.postageDetails.carrierName!=='string'||!item.postageDetails.carrierName.trim())))throw Error('Invalid draft import');
- if(await findClickDropOrder(item.orderReference))throw Error('An order already exists in Click & Drop. Use Check existing import.');
+ if(await findClickDropOrder(item.orderReference,item.orderDate))throw Error('An order already exists in Click & Drop. Use Check existing import.');
  // Account rate limit is two calls/second; do not immediately POST after the lookup.
  await new Promise(resolve=>setTimeout(resolve,600));
  const result=await request('/orders',payload);

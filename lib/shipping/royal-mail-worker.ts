@@ -34,7 +34,7 @@ export async function reconcileRoyalMailImport(id:string){
  if(process.env.VERCEL_ENV!=='production'||process.env.WORLDPAY_ENVIRONMENT!=='live')throw Error('Live shipping runtime required');
  const order=await loadOrder(id);
  if(!order.royal_mail_claim_id||order.royal_mail_reference!==royalMailReference(order.reference))throw Error('There is no claimed import to check');
- const existing=await findClickDropOrder(order.royal_mail_reference);
+ const existing=await findClickDropOrder(order.royal_mail_reference,order.created_at);
  if(!existing)return {found:false,message:'No matching Royal Mail order was found. Check Click & Drop manually; no new import was sent.'};
  if(order.royal_mail_order_id&&order.royal_mail_order_id!==existing.orderIdentifier)throw Error('Royal Mail identifier mismatch');
  await finish(id,order.royal_mail_claim_id,existing);return {found:true,...existing};

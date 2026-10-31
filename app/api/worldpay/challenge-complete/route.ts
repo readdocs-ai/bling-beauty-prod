@@ -28,6 +28,7 @@ export async function POST(request:Request){
  try{
    const response=await advanceChallenge(claimed.action,'live');
    const progress=await record3dsContinuation(reference,attempt.payment_claim_id,claimed.continuationClaim,response,'live');
+   if(progress.outcome==='uncertain')return fail(503);
    return NextResponse.json({status:'payment_processing',providerStage:progress.outcome,
     message:'Bank authentication was submitted for verification. Payment is not yet confirmed.'},{status:202,headers});
  }catch{return fail(503);}

@@ -1,3 +1,4 @@
+import PaymentCheck from '@/components/admin/payment-check';
 import Link from 'next/link';
 import {liveReadiness} from '@/lib/worldpay/live-policy.mjs';
 import {supabaseAdmin} from '@/lib/supabase';
@@ -18,6 +19,7 @@ export default async function CheckoutOperations(){
  <p className="mt-3">Current environment: {process.env.WORLDPAY_ENVIRONMENT??'Not configured'}. Configuration checks alone do not confirm a successful payment or email delivery.</p>
  <ul className="mt-5 space-y-2">{checks.map(([label,ok])=><li key={label}>{label}: <strong>{ok?'Yes':'No'}</strong></li>)}</ul>
  <div className="mt-6 flex gap-5"><Link className="underline" href="/admin/email-preview">Email previews</Link><Link className="underline" href="/admin/email-test">Send a test email</Link><Link className="underline" href="/admin/orders">Customer orders</Link></div>
+ <PaymentCheck/>
  <section className="mt-8 rounded-xl border p-5"><h2 className="mb-4 text-xl">Payment notification recovery</h2><SettlementRecovery/>
  {events.error?<p className="mt-4">Notification inbox unavailable. Check the database migration.</p>:<ul className="mt-4 space-y-2">{events.data?.map(e=><li key={`${e.environment}/${e.event_id}`} className="break-all text-sm">{e.environment==='try'?'TEST':'LIVE'} — {e.reference}: {e.status}</li>)}</ul>}</section>
  <section className="mt-8 rounded-xl border p-5"><h2 className="text-xl">Recent email jobs</h2><p className="mt-2 text-sm">Accepted means the email provider accepted the request; it does not confirm inbox delivery. A job stuck at “sending” must be reviewed before any retry.</p>

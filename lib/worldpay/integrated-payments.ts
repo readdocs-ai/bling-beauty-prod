@@ -5,7 +5,7 @@
 import 'server-only';
 import { accessConfiguration } from './access-client';
 import {assertLiveRuntime} from './live-policy.mjs';
-import { API_VERSION, safeIntegratedAction, checkedProviderResult, checkedProviderQueryResult } from './integrated-payments-contract.mjs';
+import { API_VERSION, providerDiagnostic, safeIntegratedAction, checkedProviderResult, checkedProviderQueryResult } from './integrated-payments-contract.mjs';
 
 type ProviderResponse = { httpStatus: number; outcome: string; actions: Record<string,string>; data: Record<string, unknown>; correlationId: string | null };
 
@@ -26,6 +26,7 @@ async function request(method: 'POST'|'GET', href: string, payload?: object, env
   const raw: unknown = await response.json().catch(() => null);
   const data = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string,unknown> : {};
   const checked = method === 'GET' ? checkedProviderQueryResult(response.status, data, environment) : checkedProviderResult(response.status, data, environment);
+  if(checked.outcome==='uncertain')console.warn('Worldpay response requires review',providerDiagnostic(response.status,data,response.headers.get('WP-CorrelationId')));
   // Unknown errors and timeouts are uncertain, NEVER automatically retried.
   return { httpStatus: response.status, outcome: checked.outcome,
     actions: checked.actions, data, correlationId: response.headers.get('WP-CorrelationId') };

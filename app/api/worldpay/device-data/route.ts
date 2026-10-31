@@ -45,6 +45,7 @@ export async function POST(request: Request) {
   try {
     const response = await advanceDeviceData(claimed.action,collectionReference?{collectionReference}:{},'live');
     const progress = await record3dsContinuation(reference,attempt.payment_claim_id,claimed.continuationClaim,response,'live');
+   if(progress.outcome==='uncertain')return fail(503);
     if (progress.outcome === 'challenge') {
       const challenge = response.data?.challenge;
       const challengeReference = challenge && typeof challenge === 'object' && !Array.isArray(challenge)

@@ -113,7 +113,7 @@ export default function CartPage() {
         window.location.assign(`/success?reference=${encodeURIComponent(previewReference)}`);return;
       }
       setProviderStage(result.providerStage??null);
-      if(configuration?.environment==='live')setPreviewStatus(result.status==='pending'?'No payment has been submitted. Enter your card details to continue.':result.providerStage==='device_data'?'Your payment is waiting for the bank security check. Do not submit your card again.':(result.providerStage==='declined'?'Your payment was declined. Please contact us before starting another payment.':'We are checking your payment. Please wait for confirmation before trying again.'));
+      if(configuration?.environment==='live')setPreviewStatus(result.status==='pending'?'No payment has been submitted. Enter your card details to continue.':result.providerStage==='uncertain'?'Worldpay has not confirmed the payment result. Please contact us before trying again.':result.providerStage==='device_data'?'Your payment is waiting for the bank security check. Do not submit your card again.':(result.providerStage==='declined'?'Your payment was declined. Please contact us before starting another payment.':'We are checking your payment. Please wait for confirmation before trying again.'));
       else setPreviewStatus(`Order: ${result.status}. Worldpay: ${result.providerStage || 'not started'}.`);
       setCaptureAvailable(configuration?.environment==='try' && result.settlementMode !== 'auto' && result.status === 'payment_processing' && result.providerStage === 'authorised');
     } catch { setPreviewStatus('Unable to verify status. Do not resubmit payment.'); }
@@ -237,7 +237,7 @@ export default function CartPage() {
                 <Button disabled={!recoveryReady || !configuration?.available || busy || Boolean(previewReference)} className="w-full justify-center">{busy ? "Preparing…" : previewReference ? "Checkout prepared" : configuration?.environment==='try' ? "Prepare Preview secure card fields" : "Continue to secure payment"}</Button>
               </form>
               {configuration&&!configuration.available&&<p role="status" className="text-sm">Card payments are temporarily unavailable. Please contact <a className="underline" href="mailto:info@blingbeautyproducts.com">info@blingbeautyproducts.com</a>.</p>}
-              {previewReference && configuration && <WorldpayPreviewFields providerStage={providerStage} environment={configuration.environment} amountPence={paymentAmount} reference={previewReference} checkoutId={previewCheckoutId} ownershipSecret={previewOwnershipSecret} />}
+              {previewReference && configuration && <WorldpayPreviewFields onProgress={()=>void checkPreviewStatus()} providerStage={providerStage} environment={configuration.environment} amountPence={paymentAmount} reference={previewReference} checkoutId={previewCheckoutId} ownershipSecret={previewOwnershipSecret} />}
               {previewReference && <div className="rounded-xl border p-3 text-sm" role="status">
                 <p>{previewStatus}</p>
                 <Button variant="ghost" onClick={() => void checkPreviewStatus()} className="mt-2 w-full justify-center">{configuration?.environment==='live'?'Check payment status':'Check Preview attempt status'}</Button>

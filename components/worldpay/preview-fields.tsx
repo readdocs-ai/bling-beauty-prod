@@ -14,7 +14,7 @@ type WPWindow = Window & { Worldpay?: { checkout?: { init: (
 ) => void } } };
 
 /** Environment-isolated, one-shot payment initiation through the guarded server endpoint. */
-export default function WorldpayPreviewFields({ reference, checkoutId, ownershipSecret, environment='try',amountPence,providerStage }: { reference: string; checkoutId: string; ownershipSecret: string;environment?:'try'|'live';amountPence?:number;providerStage?:string|null }) {
+export default function WorldpayPreviewFields({ reference, checkoutId, ownershipSecret, environment='try',amountPence,providerStage,onProgress }: { reference: string; checkoutId: string; ownershipSecret: string;environment?:'try'|'live';amountPence?:number;providerStage?:string|null;onProgress?:()=>void }) {
   const isLive=environment==='live';
   const endpoint=(step:string)=>`/api/worldpay/${isLive?'':'preview-'}${step}`;
   const [loaded, setLoaded] = useState(false);
@@ -113,6 +113,7 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
                 timeZone: new Date().getTimezoneOffset() } }),
           });
           const result: { message?: string; error?: string; providerStage?: string; deviceData?: unknown } = await response.json().catch(() => ({}));
+          onProgress?.();
           if (mountedRef.current && response.ok && result.providerStage === 'device_data' && result.deviceData)
             setDeviceData(result.deviceData);
           if (mountedRef.current) setStatus(response.ok
@@ -144,6 +145,7 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
       body: JSON.stringify({reference,ownershipSecret,...(collectionReference?{collectionReference}:{resumeWithoutDeviceData:true})}),
     });
     const result: {providerStage?:string; challenge?:unknown} = await response.json().catch(()=>({}));
+      onProgress?.();
       if (!mountedRef.current) return;
       setDeviceData(null);
       setBusy(false);
@@ -162,6 +164,7 @@ export default function WorldpayPreviewFields({ reference, checkoutId, ownership
       method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',
       body:JSON.stringify({reference,ownershipSecret}),
     });
+      onProgress?.();
       if (!mountedRef.current) return;
       setChallenge(null);
       setStatus(response.ok ? 'Bank authentication submitted for verification. Payment is not confirmed.' :

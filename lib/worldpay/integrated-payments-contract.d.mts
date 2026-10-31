@@ -41,3 +41,5 @@ export function checkedProviderQueryResult(
   outcome: string;
   actions: WorldpayActions;
 };
+
+export function providerDiagnostic(status:number,data:any,correlationId:string|null):{httpStatus:number;outcome:string|null;errorName:string|null;correlationId:string|null};

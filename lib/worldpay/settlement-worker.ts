@@ -1,3 +1,4 @@
+import {recoverApiCapture} from './api-capture';
 import 'server-only';
 import {matchesWpecomQuery} from './webhook-policy.mjs';
 import {supabaseAdmin} from '@/lib/supabase';
@@ -37,6 +38,14 @@ export async function recoverSettlementInbox(){
  if(error)throw Error('Settlement inbox unavailable');
  const outcomes=[];
  for(const row of data??[]){try{outcomes.push(await processSettlementEvent(row as SettledEvent));}catch{outcomes.push('needs_review');}}
+ // Recover accepted captures when a notification is delayed or unavailable.
+ if(environment==='live'){
+  const pending=await supabaseAdmin.from('bling_checkout_attempts').select('reference')
+   .eq('payment_environment','live').eq('settlement_mode','auto').eq('status','payment_processing')
+   .order('capture_last_checked_at',{ascending:true,nullsFirst:true}).limit(5);
+  if(pending.error)throw Error('Capture recovery queue unavailable');
+  for(const attempt of pending.data??[]){try{outcomes.push(await recoverApiCapture(attempt.reference));}catch{outcomes.push('capture_needs_review');}}
+ }
  // Acknowledged events may have left email jobs pending while delivery was disabled.
  const jobs=await supabaseAdmin.from('bling_paid_order_jobs').select('order_id,bling_paid_orders!inner(payment_environment)')
   .eq('status','pending').in('kind',['customer_email','admin_email']).eq('bling_paid_orders.payment_environment',environment).limit(10);
@@ -49,7 +58,7 @@ export async function recoverSettlementInbox(){
 
 /** Owner-authenticated checkout status checks can recover a delayed provider query.
  * A conditional timestamp reservation throttles recovery; never charges a card. */
-export async function recoverOwnedPayment(reference:string){
+async function recoverOwnedNotification(reference:string){
  const {data,error}=await supabaseAdmin.from('bling_worldpay_settlement_events').select('*')
   .eq('environment','live').eq('reference',reference).eq('status','pending').limit(1).maybeSingle();
  if(error||!data)return;
@@ -59,4 +68,9 @@ export async function recoverOwnedPayment(reference:string){
   .or(`last_checked_at.is.null,last_checked_at.lt.${cutoff}`).select('event_id').maybeSingle();
  if(reserved.error||!reserved.data)return;
  try{await processSettlementEvent(data as SettledEvent);}catch{console.error('Worldpay payment confirmation pending review');}
+}
+
+export async function recoverOwnedPayment(reference:string){
+ await recoverOwnedNotification(reference);
+ try{await recoverApiCapture(reference);}catch{console.error('Worldpay API capture verification pending review');}
 }

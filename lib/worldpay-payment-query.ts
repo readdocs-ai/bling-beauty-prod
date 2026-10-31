@@ -15,7 +15,7 @@ export async function queryWorldpayPaymentDetails(paymentId:string):Promise<unkn
   if(response.status!==200)throw Error('Detailed provider query unavailable');
   return response.json();
 }
-/** Query-only: never mutate order state from an aggregate/possibly delayed result. */
+/** Query-only transport. Callers must apply a separate capture or settlement evidence policy. */
 export async function verifyWorldpayPayment(reference:string, amountPence:number):Promise<WorldpayVerification> {
   if (!/^BLING-[0-9a-f-]{36}$/.test(reference) || !Number.isSafeInteger(amountPence) || amountPence < 1) throw Error('Invalid order');
   const username=process.env.WORLDPAY_API_USERNAME?.trim();

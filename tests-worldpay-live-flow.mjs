@@ -16,7 +16,7 @@ const rowMatch=(row,filters)=>filters.every(([key,value])=>Array.isArray(value)?
 function table(name){return ({bling_checkout_attempts:rows,bling_worldpay_settlement_events:events,bling_paid_orders:orders,bling_paid_order_jobs:jobs,products,store_settings:[{id:1,orders_suspended:suspended}]})[name]??[];}
 function from(name){
  let action='select',payload,filters=[],single=false,projection='*';
- const q={select(s='*'){projection=s;return q;},insert(value){action='insert';payload=value;return q;},update(value){action='update';payload=value;return q;},eq(k,v){filters.push([k,v]);return q;},in(k,v){filters.push([k,v]);return q;},order(){return q;},limit(){return q;},maybeSingle(){single=true;return q;},single(){single=true;return q;},then(ok,no){
+ const q={select(s='*'){projection=s;return q;},insert(value){action='insert';payload=value;return q;},update(value){action='update';payload=value;return q;},eq(k,v){filters.push([k,v]);return q;},in(k,v){filters.push([k,v]);return q;},or(){return q;},order(){return q;},limit(){return q;},maybeSingle(){single=true;return q;},single(){single=true;return q;},then(ok,no){
   try{
    const t=table(name);let found=t.filter(row=>rowMatch(row,filters));
    if(action==='insert'){

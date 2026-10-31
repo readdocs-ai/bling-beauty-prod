@@ -1,0 +1,22 @@
+import {createRequire} from 'node:module';import {readFileSync} from 'node:fs';import assert from 'node:assert/strict';
+const {PGlite}=createRequire(import.meta.url)(process.env.BLING_PGLITE_MODULE||'@electric-sql/pglite');const db=new PGlite();
+try{
+ await db.exec('create role anon;create role authenticated;create role service_role bypassrls;');
+ for(const file of ['bling-checkout-attempts.sql','bling-paid-order-finalisation.sql','worldpay-payment-lock-and-finalisation-v2.sql','worldpay-persistent-attempts-v3.sql','worldpay-preview-attempt-ownership-v4.sql','worldpay-continuation-claims-v5.sql','worldpay-challenge-return-v6.sql','migrations/20261026215839_worldpay_single_capture.sql','migrations/20261026223857_worldpay_verified_order_delivery.sql','migrations/20261028192118_worldpay_auto_settlement.sql','migrations/20261029055924_royal_mail_owned_import.sql','migrations/20261031092659_wpecom_verified_capture.sql','migrations/20261031201944_verified_api_capture.sql'])await db.exec(readFileSync('supabase/'+file,'utf8'));
+ await db.exec('grant all on all tables in schema public to service_role;');
+ const ref='BLING-aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',claim='11111111-1111-4111-8111-111111111111',hash='a'.repeat(64);
+ await db.query("insert into bling_checkout_attempts(reference,status,amount_pence,items,customer,shipping,payment_claim_id,payment_environment,settlement_mode) values($1,'payment_processing',13000,'[]','{}','{}',$2,'live','auto')",[ref,claim]);
+ await db.query("insert into bling_worldpay_settlement_events(environment,event_id,reference,amount_pence,event_timestamp,body_sha256,event_type,authentication_method,provider_payment_id,merchant_entity,source_ip) values('live','event_fixture',$1,13000,now(),$2,'sentForSettlement','worldpay_ip','pay_fixture','merchant_fixture','34.246.73.11')",[ref,hash]);
+ const commit=(payment='pay_fixture',amount=13000,event='settlementrequestsubmitted',token=claim,entity='merchant_fixture',digest=hash)=>db.query("select bling_commit_api_capture($1,$2,$3,$4,$5,$6,$7) as id",[ref,token,payment,amount,entity,event,digest]);
+ await db.exec('set role anon');await assert.rejects(commit());await db.exec('reset role;set role authenticated');await assert.rejects(commit());await db.exec('reset role;set role service_role');
+ await assert.rejects(commit('pay_fixture',1));await assert.rejects(commit('pay_fixture',13000,'authorizationsucceeded'));await assert.rejects(commit('pay_fixture',13000,'settlementrequestsubmitted',null));await assert.rejects(commit('pay_fixture',13000,'settlementrequestsubmitted',claim,''));await assert.rejects(commit('pay_fixture',13000,'settlementrequestsubmitted',claim,'merchant_fixture','bad'));
+ await db.query("update bling_checkout_attempts set payment_environment='try'");await assert.rejects(commit());await db.query("update bling_checkout_attempts set payment_environment='live'");
+ const id=(await commit()).rows[0].id;assert.ok(id);assert.equal((await commit()).rows[0].id,id);await assert.rejects(commit('other'));await assert.rejects(commit('pay_fixture',13000,'settlementrequestsubmitted',claim,'other'));
+ assert.equal((await db.query('select count(*)::int as n from bling_paid_orders')).rows[0].n,1);assert.equal((await db.query('select count(*)::int as n from bling_paid_order_jobs')).rows[0].n,3);
+ const order=(await db.query('select * from bling_paid_orders')).rows[0];assert.equal(order.payment_confirmation_stage,'settlement_submitted');assert.equal(order.provider_event_id,null);assert.ok(order.provider_verification_id);
+ const shippingClaim='33333333-3333-4333-8333-333333333333';const shipRef='BLING-'+ref.slice(6).replaceAll('-','');
+ assert.equal((await db.query("select bling_claim_royal_mail_import($1,$2,500,0,'smallParcel',$3) as ok",[id,shippingClaim,shipRef])).rows[0].ok,true);
+ assert.equal((await db.query("select bling_finish_royal_mail_import($1,$2,$3,'12345',null,null) as ok",[id,shippingClaim,shipRef])).rows[0].ok,true);
+ const webhook=(await db.query("select bling_commit_wpecom_event('live','event_fixture',$1,$2,'pay_fixture','merchant_fixture','settlementrequestsubmitted') as id",[hash,claim])).rows[0].id;assert.equal(webhook,id);assert.equal((await db.query('select count(*)::int as n from bling_paid_order_jobs')).rows[0].n,3);
+ console.log('PASS API capture actual SQL: private access, amount/claim/merchant/hash/environment guards, independent evidence, capture stage, replay and late webhook idempotency.');
+}finally{await db.close();}

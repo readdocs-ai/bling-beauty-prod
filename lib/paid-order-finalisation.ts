@@ -1,3 +1,4 @@
+import {hasPaymentEvidence} from './worldpay/api-capture-policy.mjs';
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendOrderEmail } from '@/lib/email/send';
@@ -43,7 +44,7 @@ export async function finalisePayment(reference:string) {
 export async function processPaidOrderEmails(orderId:string) {
  const {data,error} = await supabaseAdmin.from('bling_paid_orders').select('*').eq('id',orderId).eq('status','paid').single();
  if(error || !data) throw new Error('Verified order not found');
- if(!data.provider_event_id||!data.verified_at||!data.provider_payment_id)throw Error('Verified settlement event is required for order emails');
+ if(!hasPaymentEvidence(data)||!data.verified_at||!data.provider_payment_id)throw Error('Verified payment evidence is required for order emails');
  const order = data as Order;
  const email:EmailOrder={reference:order.reference,customerName:order.customer.name,customerEmail:order.customer.email,totalGBP:order.amount_pence/100,items:order.items.map(i=>({name:i.name,quantity:i.quantity})),shipping:order.shipping};
  const outcomes:string[]=[];

@@ -1,3 +1,4 @@
+import {hasPaymentEvidence} from '@/lib/worldpay/api-capture-policy.mjs';
 import 'server-only';
 import {randomUUID} from 'node:crypto';
 import {supabaseAdmin} from '@/lib/supabase';
@@ -5,7 +6,7 @@ import {prepareRoyalMailDraft,royalMailReference,type Packing,type RoyalMailResu
 import {importClickDropOrder,findClickDropOrder,clickDropConfigured,prepareClickDropAccount} from '@/lib/royal-mail-click-drop';
 async function loadOrder(id:string){
  const {data,error}=await supabaseAdmin.from('bling_paid_orders').select('*').eq('id',id).eq('status','paid').eq('payment_environment','live').single();
- if(error||!data||!data.verified_at||!data.provider_event_id||!data.provider_payment_id)throw Error('Verified Live paid order not found');return data;
+ if(error||!data||!data.verified_at||!hasPaymentEvidence(data)||!data.provider_payment_id)throw Error('Verified Live paid order not found');return data;
 }
 async function finish(id:string,claim:string,result:RoyalMailResult){
  const {data,error}=await supabaseAdmin.rpc('bling_finish_royal_mail_import',{p_order_id:id,p_claim:claim,p_reference:result.reference,p_provider_id:result.orderIdentifier,p_tracking:result.trackingNumber,p_shipped_at:result.shippedOn});

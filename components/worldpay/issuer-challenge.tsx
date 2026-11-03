@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { parseIssuerChallenge } from "@/lib/worldpay/issuer-challenge.mjs";
 import { buildChallengeDocument } from "@/lib/worldpay/challenge-document.mjs";
 
@@ -9,14 +9,18 @@ import { buildChallengeDocument } from "@/lib/worldpay/challenge-document.mjs";
 export default function IssuerChallenge({ challenge, onReturn }: { challenge: unknown; onReturn: () => void }) {
   const validated = useMemo(() => parseIssuerChallenge(challenge), [challenge]);
   const [openedReference, setOpenedReference] = useState<string | null>(null);
+  const frame = useRef<HTMLIFrameElement>(null);
+  const returnedReference = useRef<string | null>(null);
   const srcDoc = validated && openedReference === validated.reference ? buildChallengeDocument(validated) : undefined;
 
   useEffect(() => {
     if (!validated) return;
     const listener = (event: MessageEvent) => {
-      const frame = document.querySelector<HTMLIFrameElement>('iframe[name="bling-issuer-challenge-frame"]');
-      if (event.origin !== window.location.origin || event.source !== frame?.contentWindow ||
-          !event.data || event.data.type !== 'bling-worldpay-issuer-return') return;
+      if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow ||
+          !event.data || event.data.type !== 'bling-worldpay-issuer-return' ||
+          event.data.challengeReference !== validated.reference ||
+          returnedReference.current === validated.reference) return;
+      returnedReference.current = validated.reference;
       onReturn();
     };
     window.addEventListener('message', listener);
@@ -31,8 +35,12 @@ export default function IssuerChallenge({ challenge, onReturn }: { challenge: un
       onClick={() => setOpenedReference(validated.reference)} className="rounded border px-3 py-2 disabled:opacity-50">
       {openedReference === validated.reference ? 'Bank verification opened' : 'Open bank verification'}
     </button>
-    <iframe name="bling-issuer-challenge-frame" title="Secure bank identity verification"
+    <iframe ref={frame} name="bling-issuer-challenge-frame" title="Secure bank identity verification"
       srcDoc={srcDoc} className="mt-3 h-[520px] w-full rounded border" referrerPolicy="no-referrer" />
     <p className="mt-2 text-sm" role="status">Awaiting issuer verification. Your order remains pending until Worldpay confirms the result.</p>
+    <details className="mt-2 text-xs"><summary>Preview bank-screen diagnostics</summary>
+      <p>Initial bank service: {new URL(validated.url).origin}</p>
+      <p>Checkout origin must match the authentication return origin. No card details or authentication tokens are shown here.</p>
+    </details>
   </section>;
 }

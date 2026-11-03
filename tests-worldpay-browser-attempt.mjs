@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {readBrowserAttempt,saveBrowserAttempt,markBrowserAttemptSubmitted} from './lib/worldpay/browser-attempt.mjs';
+const data=new Map(),storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};
+const attempt={version:1,reference:'BLING-aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',ownershipSecret:'a'.repeat(64),checkoutId:'mock_checkout_id',submitted:false};
+assert.equal(readBrowserAttempt(storage),null);
+saveBrowserAttempt(storage,attempt);assert.deepEqual(readBrowserAttempt(storage),attempt);
+assert.throws(()=>markBrowserAttemptSubmitted(storage,'BLING-bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb'));
+markBrowserAttemptSubmitted(storage,attempt.reference);
+assert.equal(readBrowserAttempt(storage).submitted,true);
+assert.throws(()=>markBrowserAttemptSubmitted(storage,attempt.reference));
+assert.throws(()=>saveBrowserAttempt(storage,attempt));
+assert.throws(()=>saveBrowserAttempt(storage,{...attempt,reference:'BLING-bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb'}));
+assert.throws(()=>readBrowserAttempt({getItem:()=>'{broken'}));
+assert.throws(()=>saveBrowserAttempt({getItem:()=>null,setItem:()=>{}},attempt));
+const stored=JSON.stringify([...data.values()]);
+for(const forbidden of ['jwt','sessionHref','cardNumber','customer','shipping']) assert.equal(stored.includes(forbidden),false);
+console.log('PASS: tab recovery survives refresh, refuses replacing unresolved attempts and stores no card credentials or customer data');

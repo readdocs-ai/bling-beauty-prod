@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {readFileSync} from 'node:fs';
+import {pathToFileURL} from 'node:url';
+import {emailDeliverySettings,emailIdempotencyKey} from './lib/email/delivery-policy.mjs';
+import {mergeAdminOrders} from './lib/admin-orders.mjs';
+const env={BLING_ORDER_EMAILS_ENABLED:'true',VERCEL_ENV:'preview',WORLDPAY_ENVIRONMENT:'try',BLING_TEST_EMAIL_RECIPIENTS:'info@blingbeautyproducts.com'};
+assert.equal(emailDeliverySettings(env,'try',['info@blingbeautyproducts.com']).prefix,'[TEST] ');
+assert.throws(()=>emailDeliverySettings({...env,BLING_ORDER_EMAILS_ENABLED:'false'},'try',['info@blingbeautyproducts.com']));
+assert.throws(()=>emailDeliverySettings(env,'try',['customer@example.com']));
+assert.throws(()=>emailDeliverySettings(env,'live',['info@blingbeautyproducts.com']));
+assert.throws(()=>emailDeliverySettings({...env,VERCEL_ENV:'production'},'try',['info@blingbeautyproducts.com']));
+assert.throws(()=>emailDeliverySettings(env,'try',['info@blingbeautyproducts.com\r\nBcc:x@example.com']));
+const id='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
+assert.equal(emailIdempotencyKey('try',id,'customer_email'),emailIdempotencyKey('try',id,'customer_email'));
+assert.notEqual(emailIdempotencyKey('try',id,'customer_email'),emailIdempotencyKey('live',id,'customer_email'));
+const ts=createRequire(import.meta.url)('typescript');
+const moduleURL=code=>'data:text/javascript;base64,'+Buffer.from(ts.transpileModule(code,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText).toString('base64');
+const templates=moduleURL(readFileSync('lib/email/templates.ts','utf8'));
+const source=readFileSync('lib/email/send.ts','utf8').replace("import 'server-only';",'')
+ .replace("'./templates'",JSON.stringify(templates)).replace("'./delivery-policy.mjs'",JSON.stringify(pathToFileURL(process.cwd()+'/lib/email/delivery-policy.mjs').href));
+const {sendOrderEmail}=await import(moduleURL(source));
+const savedEnv={...process.env},savedFetch=globalThis.fetch;Object.assign(process.env,env,{RESEND_API_KEY:'synthetic-test-key'});
+let sent=[];globalThis.fetch=async(url,options)=>{sent.push({url,options});return new Response(JSON.stringify({id:'synthetic_email_123'}),{status:200});};
+try{
+ const order={reference:'BLING-'+id,customerName:'Alex',customerEmail:'info@blingbeautyproducts.com',totalGBP:130,items:[{name:'Test item',quantity:1}]};
+ const key=emailIdempotencyKey('try',id,'customer_email');
+ assert.equal((await sendOrderEmail('payment-confirmed',order,{environment:'try',idempotencyKey:key})).id,'synthetic_email_123');
+ assert.equal(sent[0].options.headers['Idempotency-Key'],key);assert.equal(sent[0].options.redirect,'error');
+ const payload=JSON.parse(sent[0].options.body);assert.match(payload.subject,/^\[TEST\]/);assert.match(payload.text,/no live order/);assert.equal(payload.reply_to,'info@blingbeautyproducts.com');
+ await assert.rejects(sendOrderEmail('payment-confirmed',{...order,customerEmail:'stranger@example.com'},{environment:'try',idempotencyKey:key}));assert.equal(sent.length,1);
+ globalThis.fetch=async()=>{throw Error('timeout');};await assert.rejects(sendOrderEmail('admin-alert',order,{environment:'try',idempotencyKey:key}));
+}finally{globalThis.fetch=savedFetch;for(const k of Object.keys(process.env))if(!(k in savedEnv))delete process.env[k];Object.assign(process.env,savedEnv);}
+const rows=mergeAdminOrders([{id:'stripe',amount_total:500,status:'paid',shipping_name:'Existing',created_at:'2026-10-25'}],[{id:'worldpay',reference:'BLING-'+id,amount_pence:13000,payment_environment:'try',customer:{name:'Alex',email:'x@example.invalid'},created_at:'2026-10-26'}]);
+assert.equal(rows[0].total_gbp,130);assert.equal(rows[0].test_order,true);assert.equal(rows[1].total_gbp,5);assert.equal(rows[1].payment_status,'paid');
+console.log('PASS: actual email transport uses test labels, recipient gates and idempotency; no live messages sent; admin maps legacy and verified orders.');

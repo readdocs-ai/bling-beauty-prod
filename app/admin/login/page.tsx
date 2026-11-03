@@ -16,8 +16,8 @@ async function loginAction(formData: FormData) {
   redirect("/admin/login?error=1");
 }
 
-export default function AdminLogin({ searchParams }: { searchParams: { error?: string } }) {
-  const error = searchParams?.error === "1";
+export default async function AdminLogin({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const error = (await searchParams)?.error === "1";
 
   return (
     <div className="mx-auto max-w-md px-4 py-16">

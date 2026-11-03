@@ -8,6 +8,7 @@ import { claimOwnedPreviewAttempt } from '@/lib/worldpay/preview-ownership';
 import { createIntegratedPayment } from '@/lib/worldpay/integrated-payments';
 import { storeVerifiedProviderProgress } from '@/lib/worldpay/persistent-attempt';
 import { buildTryPaymentPayload } from '@/lib/worldpay/preview-payment-payload.mjs';
+import { previewReturnUrl } from '@/lib/worldpay/preview-return-url.mjs';
 
 export const dynamic = 'force-dynamic';
 const noStore = { 'Cache-Control': 'no-store' };
@@ -28,10 +29,12 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail('Invalid payment request', 400);
   const { reference, ownershipSecret, sessionHref, browser } = parsed.data;
-  // Never accept return URLs from the browser. Only the current Vercel Preview hostname.
-  const host = process.env.VERCEL_URL;
-  if (!host || !/^[a-z0-9-]+\.vercel\.app$/.test(host)) return fail('Preview return URL unavailable',503);
-  const threeDS = {...browser,returnUrl:`https://${host}/api/worldpay/preview-challenge-return`};
+  // The iframe must return to the same origin as its parent. Vercel's immutable
+  // deployment hostname may differ from the branch alias the customer opened.
+  let returnUrl: string;
+  try { returnUrl = previewReturnUrl(request.url, process.env); }
+  catch { return fail('Preview return URL unavailable',503); }
+  const threeDS = {...browser,returnUrl};
   const entity = process.env.WORLDPAY_ENTITY;
   const narrative = process.env.WORLDPAY_STATEMENT_NARRATIVE;
   if (!entity || !narrative || !process.env.WORLDPAY_API_USERNAME || !process.env.WORLDPAY_API_PASSWORD) {

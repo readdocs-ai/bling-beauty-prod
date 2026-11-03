@@ -13,7 +13,7 @@ export async function claimOwnedPreviewAttempt(reference: string, ownershipSecre
   if (error) throw new Error('Owned-payment claim migration missing or unavailable');
   if (data !== true) return null;
   const result = await supabaseAdmin.from('bling_checkout_attempts')
-    .select('reference,status,amount_pence,currency,payment_claim_id')
+    .select('reference,status,amount_pence,currency,payment_claim_id,settlement_mode')
     .eq('reference', reference).eq('payment_claim_id', claim).single();
   if (result.error || !result.data || result.data.status !== 'payment_processing')
     throw new Error('Claimed payment must be reconciled manually');

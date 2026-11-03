@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
+import {requireAdminSession} from '@/lib/admin-auth';
 
 const ProductSchema = z.object({
   id: z.string().optional(),
@@ -19,6 +20,7 @@ const ProductSchema = z.object({
 });
 
 export async function upsertProduct(formData: FormData) {
+  await requireAdminSession();
   const raw = Object.fromEntries(formData.entries());
 
   const parsed = ProductSchema.safeParse({
@@ -63,6 +65,7 @@ export async function upsertProduct(formData: FormData) {
 }
 
 export async function deleteProduct(id: string) {
+  await requireAdminSession();
   const { error } = await supabaseAdmin.from("products").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/shop");

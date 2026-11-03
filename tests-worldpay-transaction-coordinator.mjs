@@ -13,8 +13,9 @@ assert.equal(classifyProviderResponse({status:201,data:{outcome:'authorized'}},S
 assert.equal(permittedContinuation(S.AUTHORISED,'complete3dsChallenge'),false);
 assert.equal(permittedContinuation(S.DEVICE,'supply3dsDeviceData'),true);
 assert.equal(permittedContinuation(S.CHALLENGE,'complete3dsChallenge'),true);
-const q={transactionReference:ref,amount:1200,currency:'GBP',lastEvent:'sentForSettlement'};
+const q={transactionReference:ref,amount:1200,currency:'GBP',lastEvent:'settled'};
 assert.equal(canFinalisePaid({stage:S.SETTLEMENT,providerQuery:q,expectedReference:ref,expectedAmount:1200}),true);
+assert.equal(canFinalisePaid({stage:S.SETTLEMENT,providerQuery:{...q,lastEvent:'sentForSettlement'},expectedReference:ref,expectedAmount:1200}),false);
 assert.equal(canFinalisePaid({stage:S.AUTHORISED,providerQuery:q,expectedReference:ref,expectedAmount:1200}),false);
 assert.equal(canFinalisePaid({stage:S.SETTLEMENT,providerQuery:{...q,amount:1300},expectedReference:ref,expectedAmount:1200}),false);
 assert.equal(canFinalisePaid({stage:S.SETTLEMENT,providerQuery:{...q,lastEvent:'authorized'},expectedReference:ref,expectedAmount:1200}),false);

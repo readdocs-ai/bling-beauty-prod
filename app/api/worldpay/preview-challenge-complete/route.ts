@@ -30,7 +30,7 @@ export async function POST(request:Request){
  if(!claimed)return fail(409);
  // Single-use claim was durably taken. Worldpay POST with NO body as documented.
  try{
-   const response=await advanceChallenge(claimed.action,{});
+   const response=await advanceChallenge(claimed.action);
    const progress=await record3dsContinuation(reference,attempt.payment_claim_id,claimed.continuationClaim,response);
    return NextResponse.json({status:'payment_processing',providerStage:progress.outcome,
     message:'Bank authentication was submitted for verification. Payment is not yet confirmed.'},{status:202,headers});

@@ -1,45 +1,74 @@
+import Image from "next/image";
 import Link from "next/link";
-import { luxuryItems } from "@/lib/luxury-catalogue";
 import { LuxuryTile } from "@/components/luxury/luxury-tile";
+import { giftSetPrice, luxuryItems } from "@/lib/luxury-catalogue";
+import { storeContact } from "@/lib/store-contact";
 
 export const metadata = {
-  title: "Luxury Skincare & Beautiful Gifting | Bling Beauty Products",
-  description: "Explore the Bling Beauty boutique: thoughtfully curated skincare, elegant gift ideas and a fresh approach to everyday beauty.",
+  title: "Christmas Skincare Gift Sets | Bling Beauty Products",
+  description: `Shop beautifully presented BLING skincare gift sets for men and women, from ${giftSetPrice}.`,
 };
 
-export default async function HomePage() {
-  return <main className="bb-home">
-    <section className="bb-hero">
-      <div className="bb-hero-inner">
-        <div className="bb-hero-copy">
-          <div className="bb-overline"><span className="bb-sparkle">✦</span> THE BLING BEAUTY BOUTIQUE</div>
-          <h1>Your daily dose<br/>of <em>beautiful.</em></h1>
-          <p>Discover a brighter way to shop skincare. Considered beauty essentials, indulgent rituals and gifting worth getting excited about.</p>
-          <div className="bb-hero-actions"><Link className="bb-cta" href="/shop">Explore the boutique <span aria-hidden="true">↗</span></Link><Link className="bb-quiet-link" href="/about">Meet Bling Beauty <span aria-hidden="true">→</span></Link></div>
-          <div className="bb-hero-note"><span>✧</span> A little everyday luxury, beautifully chosen.</div>
+export default function HomePage() {
+  return (
+    <main className="luxury-page">
+      <section className="luxury-shop-hero" aria-labelledby="christmas-gifts">
+        <div className="mx-auto grid max-w-7xl items-center gap-5 px-5 py-5 sm:gap-8 sm:px-6 sm:py-8 md:grid-cols-[1fr_1.05fr] lg:gap-12 lg:py-10">
+          <div className="max-w-xl">
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.22em] text-[#715340]"><span aria-hidden="true">✦</span> Christmas at Bling Beauty</p>
+            <h1 id="christmas-gifts" className="mt-3 font-display text-[clamp(2.25rem,5vw,3.85rem)] leading-[1.04] tracking-tight">
+              Christmas gift sets{" "}
+              <span className="block italic text-[#715340]">for him and her</span>
+            </h1>
+            <p className="mt-3 max-w-md text-sm leading-6 text-[#64554b] sm:text-base">
+              Beautifully presented skincare gifts for men and women.
+            </p>
+            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+              <Link
+                href="/shop#gift-sets"
+                className="inline-flex min-h-12 items-center gap-3 rounded-md bg-[#2b4335] px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#1d3427] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2b4335]"
+              >
+                Buy your gifts now <span aria-hidden="true">→</span>
+              </Link>
+              <p className="text-sm font-semibold">From {giftSetPrice}</p>
+            </div>
+          </div>
+          <div className="relative aspect-[2/1] overflow-hidden rounded-xl ring-1 ring-[#8c7867]/30 md:aspect-[8/5]">
+            <Image
+              src="/products/bling-collections/bling-renew-restore-collection-detail.webp"
+              alt="BLING Renew & Restore skincare gift set in emerald and gold packaging"
+              fill
+              priority
+              sizes="(max-width: 767px) 100vw, (max-width: 1279px) 51vw, 630px"
+              className="object-cover object-[center_45%]"
+            />
+          </div>
         </div>
-        <div className="bb-hero-art" aria-label="Abstract decorative beauty illustration">
-          <div className="bb-art-halo"/><div className="bb-art-sun"/><div className="bb-art-bottle bb-art-bottle-back"><span>BLING<br/>BEAUTY</span></div><div className="bb-art-bottle bb-art-bottle-front"><span className="bb-bottle-mark">B.</span><span>THE BEAUTY EDIT</span></div><div className="bb-art-orb"/><div className="bb-art-sticker">GLOW<br/><em>your way</em></div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 py-7 sm:px-6 sm:py-9" aria-labelledby="featured-gifts">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2 border-b border-[#d9cdc0] pb-3 sm:mb-5">
+          <h2 id="featured-gifts" className="font-display text-3xl tracking-tight sm:text-4xl">Featured gift sets</h2>
+          <Link href="/shop#gift-sets" className="inline-flex min-h-11 items-center text-sm font-semibold underline hover:text-[#715340]">
+            Shop all gift sets <span aria-hidden="true" className="ml-2">→</span>
+          </Link>
         </div>
-      </div>
-      <div className="bb-hero-bottom">SKINCARE <span>✦</span> BEAUTY RITUALS <span>✦</span> GIFTING <span>✦</span> EVERYDAY LUXURY</div>
-    </section>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {luxuryItems.slice(0, 3).map(item => <LuxuryTile key={item.slug} item={item} />)}
+        </div>
+      </section>
 
-    <section className="bb-intro bb-wrap"><div><div className="bb-overline">CURATED WITH CARE</div><h2>Good skin days start <em>here.</em></h2></div><p>Whether you are refreshing your routine or choosing something special, find beauty that feels personal, joyful and effortlessly luxurious.</p></section>
-
-    <section className="bb-category-wrap bb-wrap" aria-label="Shop by interest">
-      <Link href="/shop" className="bb-category bb-category-peach"><span className="bb-category-symbol">✳</span><span><small>01 / DISCOVER</small><strong>Skincare favourites</strong><span>Explore the edit ↗</span></span></Link>
-      <Link href="/shop" className="bb-category bb-category-lilac"><span className="bb-category-symbol">✿</span><span><small>02 / INDULGE</small><strong>Feel-good rituals</strong><span>Find your moment ↗</span></span></Link>
-      <Link href="/shop" className="bb-category bb-category-lemon"><span className="bb-category-symbol">✧</span><span><small>03 / CELEBRATE</small><strong>Beautiful gifting</strong><span>Shop thoughtful treats ↗</span></span></Link>
-    </section>
-
-    <section className="bb-products bb-wrap"><div className="bb-section-heading"><div><div className="bb-overline">THE BOUTIQUE EDIT</div><h2>Something to <em>love.</em></h2><p>Explore the latest additions to the Bling Beauty collection.</p></div><Link href="/shop" className="bb-view-all">View the full shop ↗</Link></div>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{luxuryItems.map(item=><LuxuryTile key={item.slug} item={item}/>)}</div>
-
-    </section>
-
-    <section className="bb-story"><div className="bb-wrap bb-story-grid"><div className="bb-story-art"><span className="bb-story-big">B</span><span className="bb-story-flower">✺</span><span className="bb-story-caption">BEAUTY LOOKS GOOD ON YOU</span></div><div className="bb-story-copy"><div className="bb-overline">A NOTE FROM BLING BEAUTY</div><h2>Luxury should feel <em>lovely.</em><br/>Not complicated.</h2><p>We believe your beauty routine should be one of the best parts of your day. Thoughtful products, delightful details and an easy, welcoming shopping experience — that's the Bling Beauty way.</p><Link className="bb-cta" href="/about">Our story ↗</Link></div></div></section>
-
-    <section className="bb-contact-strip bb-wrap"><div><div className="bb-overline">HERE TO HELP</div><h2>Need a little beauty advice?</h2><p>Questions about the collection or your order? Our team is just a message away.</p></div><div className="bb-contact-actions"><a className="bb-cta" href="https://wa.me/447459676630" target="_blank" rel="noopener noreferrer">Chat on WhatsApp ↗</a><a className="bb-quiet-link" href="mailto:info@blingbeautyproducts.com">Email our team →</a></div></section>
-  </main>;
+      <section className="border-t border-[#e2d8cd] bg-[#f1e9df]">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-5 sm:px-6">
+          <div>
+            <h2 className="font-display text-2xl">Need help choosing a gift?</h2>
+            <p className="mt-1 text-sm text-[#64554b]">Ask us about our collections or UK delivery.</p>
+          </div>
+          <a href={storeContact.whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-sm font-semibold underline hover:text-[#715340]">
+            Chat on WhatsApp <span aria-hidden="true" className="ml-2">↗</span>
+          </a>
+        </div>
+      </section>
+    </main>
+  );
 }

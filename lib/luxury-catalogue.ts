@@ -61,3 +61,8 @@ export const luxuryItems: LuxuryItem[] = [
     "officialUrl": ""
   }
 ];
+
+export const giftSetPrice = new Intl.NumberFormat("en-GB", {
+  style: "currency",
+  currency: "GBP",
+}).format(Math.min(...luxuryItems.map(item => item.sellingPrice)));

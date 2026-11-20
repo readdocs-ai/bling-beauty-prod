@@ -1,23 +1,26 @@
 import Image from "next/image";
 import Link from "next/link";
+import { storeContact } from "@/lib/store-contact";
 
 export function SiteFooter() {
   return (
     <footer className="border-t border-orange/15 bg-charcoal text-ivory">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
+      <div className="mx-auto grid max-w-7xl gap-8 px-5 py-8 sm:px-6 md:grid-cols-[1.1fr_0.7fr_1fr]">
         <div>
           <div className="flex items-center gap-3">
             <span className="relative h-10 w-10 overflow-hidden rounded-2xl">
               <Image src="/branding/logo-mark.svg" alt="Bling Beauty Glow mark" fill className="object-cover" />
             </span>
             <div>
-              <div className="font-display text-xl text-white">Bling Beauty</div>
+              <div className="font-display text-xl text-white">{storeContact.companyName}</div>
               <div className="text-xs font-bold uppercase tracking-[0.22em] text-tangerine">Luxury skincare & gifting</div>
             </div>
           </div>
-          <p className="mt-5 max-w-sm text-sm leading-relaxed text-ivory/70">
-            Discover considered skincare, prestige beauty and thoughtful gifting at Bling Beauty Products.
-          </p>
+          <address className="mt-4 text-sm not-italic leading-relaxed text-ivory/75">
+            {storeContact.street}<br />
+            {storeContact.locality}
+          </address>
+          <p className="mt-2 text-sm text-ivory/75">Company registration number {storeContact.registrationNumber}</p>
         </div>
 
         <div className="text-sm">
@@ -35,20 +38,19 @@ export function SiteFooter() {
         </div>
 
         <div className="text-sm">
-          <div className="font-semibold text-white">Shop confidence</div>
-          <div className="mt-3 grid gap-2 text-ivory/70">
-            <span>UK delivery options at checkout</span>
+          <div className="font-semibold text-white">Contact &amp; delivery</div>
+          <div className="mt-3 grid gap-2 text-ivory/75">
+            <a href={storeContact.phoneUrl} className="w-fit hover:text-tangerine">{storeContact.phone}</a>
+            <a href={`mailto:${storeContact.email}`} className="w-fit break-all hover:text-tangerine">{storeContact.email}</a>
+            <a href={storeContact.whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-fit hover:text-tangerine">WhatsApp support</a>
+            <span>Free standard UK delivery</span>
             <span>{process.env.BLING_CHECKOUT_PROVIDER==='paypal' ? 'Payments processed by PayPal' : 'Card payments processed by Worldpay'}</span>
-            <span>Need assistance? Get in touch</span>
-            <span className="text-xs text-ivory/50">Contact us for help with your order.</span>
-          <a href="mailto:info@blingbeautyproducts.com" className="hover:text-tangerine">info@blingbeautyproducts.com</a>
-            <a href="https://wa.me/447459676630" target="_blank" rel="noopener noreferrer" className="hover:text-tangerine">WhatsApp support</a>
           </div>
         </div>
       </div>
 
       <div className="border-t border-white/10 py-5 text-center text-xs text-ivory/55">
-        © {new Date().getFullYear()} Bling Beauty Products. All rights reserved.
+        © {new Date().getFullYear()} {storeContact.companyName}. All rights reserved.
       </div>
     </footer>
   );

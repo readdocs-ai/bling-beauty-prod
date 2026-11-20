@@ -1,9 +1,28 @@
-import { luxuryItems } from "@/lib/luxury-catalogue";
 import { LuxuryTile } from "@/components/luxury/luxury-tile";
+import { giftSetPrice, luxuryItems } from "@/lib/luxury-catalogue";
 
-export const metadata = { title: "Luxury Skincare Boutique | Bling Beauty", description: "Explore Bling Beauty's curated selection of prestige skincare, luxury gift sets and exceptional beauty rituals." };
-export default async function ShopPage() {
- return <div className="luxury-page min-h-screen"><section className="luxury-shop-hero"><div className="mx-auto max-w-7xl px-6 py-20 md:py-28"><p className="luxury-eyebrow">BLING BEAUTY / THE BOUTIQUE</p><h1 className="mt-7 font-display text-6xl tracking-tight md:text-8xl">The skincare <em>edit.</em></h1><p className="mt-7 max-w-xl text-lg leading-8 text-[#6d6258]">Discover considered skincare, extraordinary gift sets from our own BLING collection.</p><div className="mt-10 flex items-center gap-4 text-[11px] uppercase tracking-[.2em] text-[#8d7967]"><span className="h-px w-12 bg-[#a78b73]"/> CURATED LUXURY</div></div></section>
- <section className="mx-auto max-w-7xl px-6 py-16"><div className="mb-9 flex flex-wrap items-end justify-between gap-4 border-b border-[#d9cdc0] pb-6"><div><p className="luxury-eyebrow">THE COLLECTION</p><h2 className="mt-3 font-display text-4xl">Explore the boutique</h2></div><span className="text-sm text-[#81766b]">{luxuryItems.length} luxury collections</span></div>
- <div className="mb-10"><p className="text-sm text-[#786a5e]">Explore six distinctive BLING collections, each £130. Discover your favourite colour palette and find a thoughtful gift or a treat for yourself.</p></div><div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{luxuryItems.map(item=><LuxuryTile key={item.slug} item={item}/>)}</div></section><section className="border-t border-[#e2d8cd] bg-[#f1e9df]"><div className="mx-auto grid max-w-7xl gap-7 px-6 py-12 text-center md:grid-cols-3"><div><div className="font-display text-xl">Curated beauty</div><p className="mt-2 text-sm text-[#75685e]">Six distinctive BLING skincare collections</p></div><div><div className="font-display text-xl">Elevated gifting</div><p className="mt-2 text-sm text-[#75685e]">Thoughtful beauty for special moments</p></div><div><div className="font-display text-xl">The everyday ritual</div><p className="mt-2 text-sm text-[#75685e]">Making space for a little indulgence</p></div></div></section></div>;
+export const metadata = {
+  title: "Shop Skincare Gift Sets | Bling Beauty",
+  description: `Browse the BLING skincare gift sets for men and women, from ${giftSetPrice}.`,
+};
+
+export default function ShopPage() {
+  return (
+    <main className="luxury-page">
+      <section className="luxury-shop-hero">
+        <div className="mx-auto max-w-7xl px-5 py-6 sm:px-6 sm:py-8">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.22em] text-[#715340]">Bling Beauty</p>
+          <h1 className="mt-2 font-display text-4xl leading-tight tracking-tight sm:text-5xl">Skincare gift sets</h1>
+          <p className="mt-2 text-sm leading-6 text-[#64554b] sm:text-base">
+            Find Christmas gifts for men and women. <strong className="font-semibold text-[#332b29]">From {giftSetPrice}.</strong>
+          </p>
+        </div>
+      </section>
+      <section id="gift-sets" aria-label="Shop BLING gift sets" className="mx-auto max-w-7xl scroll-mt-24 px-5 pb-8 pt-5 sm:px-6 sm:pb-10 sm:pt-6">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {luxuryItems.map(item => <LuxuryTile key={item.slug} item={item} heading="h2" />)}
+        </div>
+      </section>
+    </main>
+  );
 }

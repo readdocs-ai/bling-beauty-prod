@@ -16,7 +16,7 @@ const schema = z.object({
 
 export async function POST(request:Request) {
   // Separate from the live /api/checkout route, and disabled by default.
-  if (process.env.VERCEL_ENV !== 'preview' || process.env.WORLDPAY_ENVIRONMENT !== 'try' ||
+  if (process.env.BLING_CHECKOUT_PROVIDER === 'paypal' || process.env.VERCEL_ENV !== 'preview' || process.env.WORLDPAY_ENVIRONMENT !== 'try' ||
       process.env.BLING_PREVIEW_CHECKOUT_PREPARATION !== 'true') return fail('Preview preparation is disabled',503);
   const checkoutId = process.env.WORLDPAY_CHECKOUT_ID?.trim();
   if (!checkoutId || !/^[A-Za-z0-9_-]{8,150}$/.test(checkoutId)) return fail('Worldpay checkout configuration unavailable',503);

@@ -6,11 +6,11 @@ import {emailDeliverySettings} from './delivery-policy.mjs';
 const FROM = 'Bling Beauty Products <info@blingbeautyproducts.com>';
 const ADDRESS = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export async function sendOrderEmail(kind: EmailKind, order: EmailOrder, options:{environment:'try'|'live';idempotencyKey:string}): Promise<{ id: string }> {
+export async function sendOrderEmail(kind: EmailKind, order: EmailOrder, options:{environment:'try'|'live';idempotencyKey:string;provider?:'worldpay'|'paypal'}): Promise<{ id: string }> {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error('Email service is not configured');
   const draft = buildEmail(kind, order);
-  const settings=emailDeliverySettings(process.env,options.environment,[draft.recipient]);
+  const settings=emailDeliverySettings(process.env,options.environment,[draft.recipient],options.provider);
   if(!/^[A-Za-z0-9_/-]{1,256}$/.test(options.idempotencyKey))throw Error('Invalid delivery key');
   if (!ADDRESS.test(draft.recipient)) throw new Error('Invalid recipient email');
   const response = await fetch('https://api.resend.com/emails', {

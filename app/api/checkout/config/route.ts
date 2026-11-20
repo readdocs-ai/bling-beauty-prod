@@ -1,10 +1,17 @@
 import {NextResponse} from 'next/server';
 import {previewReadiness} from '@/lib/worldpay/preview-readiness';
 import {liveReadiness} from '@/lib/worldpay/live-policy.mjs';
+import {isPayPalCheckout,paypalConfig} from '@/lib/paypal/client';
 import {getOrderingState} from '@/lib/order-switch';
 export const dynamic='force-dynamic';
 export async function GET(){
  const environment=process.env.VERCEL_ENV==='preview'&&process.env.WORLDPAY_ENVIRONMENT==='try'?'try':'live';
+ if(isPayPalCheckout()){
+   const config=paypalConfig();
+   const state=config ? await getOrderingState() : null;
+   return NextResponse.json({provider:'paypal',environment:config?.environment??environment,
+    available:!!state?.configured&&!state.suspended},{headers:{'Cache-Control':'no-store'}});
+ }
  let available=false;
  if(environment==='try')available=previewReadiness(process.env).readyForPaymentTesting;
  else {

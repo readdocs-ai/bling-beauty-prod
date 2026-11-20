@@ -11,7 +11,7 @@ export function liveRequestAllowed(request:Request) {
  }catch{return false;}
 }
 export async function livePreparationAllowed(request:Request) {
- if(!liveRequestAllowed(request)||!liveReadiness(process.env).ready)return false;
+ if(process.env.BLING_CHECKOUT_PROVIDER==='paypal'||!liveRequestAllowed(request)||!liveReadiness(process.env).ready)return false;
  const state=await getOrderingState();return state.configured&&!state.suspended;
 }
 export async function liveAttempt(reference:string) {

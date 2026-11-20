@@ -45,7 +45,12 @@ export async function finalisePayment(reference:string) {
 export async function processPaidOrderEmails(orderId:string) {
  const {data,error} = await supabaseAdmin.from('bling_paid_orders').select('*').eq('id',orderId).eq('status','paid').single();
  if(error || !data) throw new Error('Verified order not found');
- if(!hasPaymentEvidence(data)||!data.verified_at||!data.provider_payment_id)throw Error('Verified payment evidence is required for order emails');
+ const paypalVerified = typeof data.paypal_order_id === 'string' && /^[a-z0-9]{1,50}$/i.test(data.paypal_order_id)
+  && typeof data.provider_payment_id === 'string' && /^paypal:[a-z0-9]{1,50}$/i.test(data.provider_payment_id);
+ if ((!hasPaymentEvidence(data) && !paypalVerified) || !data.verified_at || !data.provider_payment_id) {
+  throw Error('Verified payment evidence is required for order emails');
+ }
+ const provider = paypalVerified ? 'paypal' : 'worldpay';
  const order = data as Order;
  const email:EmailOrder={reference:order.reference,orderNumber:customerOrderNumber(order),customerName:order.customer.name,customerEmail:order.customer.email,totalGBP:order.amount_pence/100,items:order.items.map(i=>({name:i.name,quantity:i.quantity})),shipping:order.shipping};
  const outcomes:string[]=[];
@@ -53,14 +58,14 @@ export async function processPaidOrderEmails(orderId:string) {
   // Disabled/configuration failures leave durable jobs pending, without claiming them.
   try{
    if(!process.env.RESEND_API_KEY)throw Error('Email unavailable');
-   emailDeliverySettings(process.env,order.payment_environment,[buildEmail(emailKind,email).recipient]);
+   emailDeliverySettings(process.env,order.payment_environment,[buildEmail(emailKind,email).recipient],provider);
   }catch{outcomes.push(`${kind}:disabled_or_unconfigured`);continue;}
   const {data:claimed,error:claimError}=await supabaseAdmin.from('bling_paid_order_jobs')
    .update({status:'sending',claimed_at:new Date().toISOString()}).eq('order_id',orderId).eq('kind',kind).eq('status','pending').select('kind').maybeSingle();
   if(claimError){outcomes.push(`${kind}:database_error`);continue;}
   if(!claimed){outcomes.push(`${kind}:already_claimed`);continue;}
   try{
-   const result=await sendOrderEmail(emailKind,email,{environment:order.payment_environment,idempotencyKey:emailIdempotencyKey(order.payment_environment,order.id,kind)});
+   const result=await sendOrderEmail(emailKind,email,{environment:order.payment_environment,provider,idempotencyKey:emailIdempotencyKey(order.payment_environment,order.id,kind)});
    const {error:updateError}=await supabaseAdmin.from('bling_paid_order_jobs').update({status:'accepted',completed_at:new Date().toISOString(),provider_id:result.id}).eq('order_id',orderId).eq('kind',kind).eq('status','sending');
    if(updateError) throw updateError;
    outcomes.push(`${kind}:accepted`);

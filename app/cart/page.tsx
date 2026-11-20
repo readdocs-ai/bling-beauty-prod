@@ -16,7 +16,7 @@ function formatGBP(n: number) {
 
 export default function CartPage() {
   const { items, subtotal, remove, setQty, clear } = useCart();
-  const [configuration,setConfiguration]=useState<{environment:'try'|'live';available:boolean}|null>(null);
+  const [configuration,setConfiguration]=useState<{environment:'try'|'live';available:boolean;provider?:'paypal'}|null>(null);
   const [paymentAmount,setPaymentAmount]=useState<number>();
   const [providerStage,setProviderStage]=useState<string|null>(null);
   const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
@@ -42,6 +42,13 @@ export default function CartPage() {
         const config=await response.json();
         if(!response.ok||!['try','live'].includes(config.environment)||typeof config.available!=='boolean')throw Error();
         if(!active)return;setConfiguration(config);
+        if(config.provider==='paypal'){
+          setRecoveryReady(true);
+          if(new URLSearchParams(window.location.search).get('paypal')==='cancelled'){
+            setError('PayPal checkout was cancelled. Your basket is still here.');
+          }
+          return;
+        }
         const attempt=readBrowserAttempt(window.sessionStorage,config.environment);
         if(attempt){
           const statusResponse=await fetch(`/api/worldpay/${config.environment==='try'?'preview-':''}attempt-status`,{
@@ -78,6 +85,16 @@ export default function CartPage() {
     if (!recoveryReady || !configuration?.available || busy || previewReference) return;
     setBusy(true); setError("");
     try {
+      if(configuration.provider==='paypal'){
+        const response=await fetch('/api/paypal/create',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({items:items.map(item=>({slug:item.slug,quantity:item.qty})),customer,shipping}),
+        });
+        const result=await response.json();
+        if(!response.ok||typeof result.approvalUrl!=='string')throw Error(result.error||'PayPal checkout is unavailable.');
+        window.location.assign(result.approvalUrl);
+        return;
+      }
       const response = await fetch(configuration.environment==='live'?"/api/checkout":"/api/worldpay/preview-prepare", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: items.map(i => ({ slug: i.slug, quantity: i.qty })), customer, shipping }) });
       const result = await response.json();
       if (!response.ok || !result.reference) throw new Error(result.error || "Unable to start checkout");
@@ -221,7 +238,7 @@ export default function CartPage() {
               <div className="text-sm font-semibold">Subtotal</div>
               <div className="text-sm font-semibold">{formatGBP(paymentAmount!==undefined?paymentAmount/100:subtotal)}</div>
             </div>
-            <div className="mt-2 text-xs text-soft-black/60">Free UK delivery. Secure payment with Worldpay.</div>
+            <div className="mt-2 text-xs text-soft-black/60">Free UK delivery. {configuration?.provider==='paypal'?'Secure payment with PayPal.':configuration?'Secure payment with Worldpay.':''}</div>
 
             <div className="mt-6 grid gap-3">
               <form onSubmit={e => { e.preventDefault(); void checkout(); }} className="grid gap-3">
@@ -234,9 +251,9 @@ export default function CartPage() {
                 <Input required aria-label="Town or city" disabled={Boolean(previewReference)} placeholder="Town or city" autoComplete="address-level2" value={shipping.city} onChange={e => setShipping({ ...shipping, city: e.target.value })} />
                 <Input required aria-label="UK postcode" disabled={Boolean(previewReference)} placeholder="UK postcode" autoComplete="postal-code" value={shipping.postcode} onChange={e => setShipping({ ...shipping, postcode: e.target.value })} />
                 {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-                <Button disabled={!recoveryReady || !configuration?.available || busy || Boolean(previewReference)} className="w-full justify-center">{busy ? "Preparing…" : previewReference ? "Checkout prepared" : configuration?.environment==='try' ? "Prepare Preview secure card fields" : "Continue to secure payment"}</Button>
+                <Button disabled={!recoveryReady || !configuration?.available || busy || Boolean(previewReference)} className="w-full justify-center">{busy ? "Preparing…" : previewReference ? "Checkout prepared" : configuration?.provider==='paypal' ? "Pay with PayPal" : configuration?.environment==='try' ? "Prepare Preview secure card fields" : "Continue to secure payment"}</Button>
               </form>
-              {configuration&&!configuration.available&&<p role="status" className="text-sm">Card payments are temporarily unavailable. Please contact <a className="underline" href="mailto:info@blingbeautyproducts.com">info@blingbeautyproducts.com</a>.</p>}
+              {configuration&&!configuration.available&&<p role="status" className="text-sm">Payments are temporarily unavailable. Please contact <a className="underline" href="mailto:info@blingbeautyproducts.com">info@blingbeautyproducts.com</a>.</p>}
               {previewReference && configuration && <WorldpayPreviewFields onProgress={()=>void checkPreviewStatus()} providerStage={providerStage} environment={configuration.environment} amountPence={paymentAmount} reference={previewReference} checkoutId={previewCheckoutId} ownershipSecret={previewOwnershipSecret} />}
               {previewReference && <div className="rounded-xl border p-3 text-sm" role="status">
                 <p>{previewStatus}</p>
